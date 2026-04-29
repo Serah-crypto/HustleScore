@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "973310753221",
+    "project_id": "hustlescore-437dd",
+    "storage_bucket": "hustlescore-437dd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:973310753221:android:9173304ab0b83a5b18b3ac",
+        "android_client_info": {
+          "package_name": "com.serah.hustlescore"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_4lRFBY-g-xg-JQZiNa5Zf7_-lyDXFBQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
