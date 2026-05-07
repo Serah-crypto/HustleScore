@@ -1,24 +1,26 @@
 package com.serah.hustlescore.models
 
 
+
 data class Transaction(
+    val amount: Double,
+    val type: TransactionType,
     val id: String = "",
     val userId: String = "",
-    val type: TransactionType = TransactionType.EXPENSE,
-    val amount: Double = 0.0,
     val date: String = "",
     val description: String = "",
     val category: String = "",
-    val mpesaRef: String = "",
-    val rawSms: String = ""
+    val rawSms: String = "",
+    val mpesaRef: String = ""
 )
 
 enum class TransactionType {
-    INCOME,
     EXPENSE,
     SAVINGS,
-    LOAN_REPAYMENT
+    LOAN_REPAYMENT,
+    INCOME
 }
+
 
 
 

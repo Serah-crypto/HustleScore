@@ -37,19 +37,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.components.ScoreGauge
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.AppUser
 import com.serah.hustlescore.models.HustleScore
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
+import com.serah.hustlescore.ui.screens.user.CreditReportScreen
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextSecondary
@@ -377,5 +381,13 @@ fun SummaryItem(label: String, value: String, color: Color) {
             fontSize = 12.sp,
             color = TextSecondary
         )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun UserDetailScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        UsersListScreen(navController = rememberNavController())
     }
 }

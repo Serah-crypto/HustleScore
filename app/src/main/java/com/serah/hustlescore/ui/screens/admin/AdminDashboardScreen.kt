@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.serah.hustlescore.models.HustleScore
 import com.serah.hustlescore.ui.theme.BackgroundGray
@@ -23,8 +24,10 @@ import com.serah.hustlescore.ui.theme.TextSecondary
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.window.Dialog
 import androidx.navigation.compose.rememberNavController
-import com.serah.hustlescore.navigation.Screen
+import com.hustlescore.ui.theme.HustleScoreTheme
+import com.serah.hustlescore.navigation.Routes
 import com.serah.hustlescore.ui.theme.TextPrimary
 
 @Composable
@@ -33,42 +36,174 @@ fun AdminDashboardScreen(navController: NavController) {
     var scores by remember { mutableStateOf<List<HustleScore>>(emptyList()) }
     var txCount by remember { mutableStateOf(0) }
 
+    // Controls visibility of the logout confirmation dialog
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
-        FirebaseDatabase.getInstance().getReference("users").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(s: DataSnapshot) { userCount = s.childrenCount.toInt() }
-            override fun onCancelled(e: DatabaseError) {}
-        })
-        FirebaseDatabase.getInstance().getReference("scores").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(s: DataSnapshot) {
-                val all = mutableListOf<HustleScore>()
-                s.children.forEach { userNode -> userNode.children.forEach { scoreNode -> scoreNode.getValue(HustleScore::class.java)?.let { all.add(it) } } }
-                scores = all
-            }
-            override fun onCancelled(e: DatabaseError) {}
-        })
-        FirebaseDatabase.getInstance().getReference("transactions").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(s: DataSnapshot) { var count = 0; s.children.forEach { count += it.childrenCount.toInt() }; txCount = count }
-            override fun onCancelled(e: DatabaseError) {}
-        })
+        FirebaseDatabase.getInstance().getReference("Users")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(s: DataSnapshot) { userCount = s.childrenCount.toInt() }
+                override fun onCancelled(e: DatabaseError) {}
+            })
+        FirebaseDatabase.getInstance().getReference("Scores")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(s: DataSnapshot) {
+                    val all = mutableListOf<HustleScore>()
+                    s.children.forEach { userNode ->
+                        userNode.children.forEach { scoreNode ->
+                            scoreNode.getValue(HustleScore::class.java)?.let { all.add(it) }
+                        }
+                    }
+                    scores = all
+                }
+                override fun onCancelled(e: DatabaseError) {}
+            })
+        FirebaseDatabase.getInstance().getReference("Transactions")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(s: DataSnapshot) {
+                    var count = 0
+                    s.children.forEach { count += it.childrenCount.toInt() }
+                    txCount = count
+                }
+                override fun onCancelled(e: DatabaseError) {}
+            })
     }
 
     val avgScore = if (scores.isNotEmpty()) scores.map { it.totalScore }.average().toInt() else 0
 
-    Column(modifier = Modifier.fillMaxSize().background(BackgroundGray).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    // ── Logout Confirmation Dialog ──────────────────────────────────────────
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Logout,
+                        contentDescription = null,
+                        tint = Color(0xFFDC2626),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Logout", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            },
+            text = {
+                Text(
+                    "Are you sure you want to log out of the admin panel?",
+                    fontSize = 14.sp,
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        FirebaseAuth.getInstance().signOut()
+                        // Navigate to login and clear the back stack so the
+                        // admin cannot press Back to return to the dashboard.
+                        navController.navigate(Routes.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Logout", color = Color.White)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showLogoutDialog = false },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // ── Screen Content ──────────────────────────────────────────────────────
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundGray)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+
+        // ── Top Bar ─────────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Column {
                 Text("Admin Dashboard", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text("Platform overview and analytics", fontSize = 13.sp, color = TextSecondary)
             }
-            Surface(shape = RoundedCornerShape(10.dp), color = HustleGreen.copy(alpha = 0.1f)) {
-                Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(6.dp).clip(RoundedCornerShape(3.dp)).background(HustleGreen))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Live", fontSize = 12.sp, color = HustleGreen, fontWeight = FontWeight.Medium)
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Live indicator
+                Surface(shape = RoundedCornerShape(10.dp), color = HustleGreen.copy(alpha = 0.1f)) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(HustleGreen)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Live", fontSize = 12.sp, color = HustleGreen, fontWeight = FontWeight.Medium)
+                    }
+                }
+
+                // Home button — goes to the main home screen
+                IconButton(
+                    onClick = {
+                        navController.navigate(Routes.Home.route) {
+                            popUpTo(Routes.AdminDashboard.route) { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFFDBEAFE))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = "Go to Home",
+                        tint = Color(0xFF2563EB),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Logout button — opens confirmation dialog
+                IconButton(
+                    onClick = { showLogoutDialog = true },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFFFFE4E4))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Logout,
+                        contentDescription = "Logout",
+                        tint = Color(0xFFDC2626),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
 
+        // ── Stat Cards ───────────────────────────────────────────────────────
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             AdminStatCard(Modifier.weight(1f), "Total Users", "$userCount", Icons.Default.People, Color(0xFF2563EB), Color(0xFFDBEAFE))
             AdminStatCard(Modifier.weight(1f), "Avg Score", "$avgScore", Icons.Default.TrendingUp, HustleGreen, Color(0xFFDCFCE7))
@@ -78,13 +213,17 @@ fun AdminDashboardScreen(navController: NavController) {
             AdminStatCard(Modifier.weight(1f), "Reports", "${scores.size}", Icons.Default.Assessment, Color(0xFFF59E0B), Color(0xFFFEF3C7))
         }
 
+        // ── Quick Actions ────────────────────────────────────────────────────
         Text("Quick Actions", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         listOf(
-            Triple(Screen.AdminUsers.route, "Manage Users", "View and manage all registered users"),
-            Triple(Screen.AdminLogs.route, "Scoring Logs", "Review all generated HustleScores"),
-            Triple(Screen.AdminWeights.route, "Algorithm Weights", "Adjust scoring formula weights")
+            Triple(Routes.UsersList.route, "Manage Users", "View and manage all registered users"),
+            Triple(Routes.ScoringLogs.route, "Scoring Logs", "Review all generated HustleScores"),
+            Triple(Routes.AlgorithmWeight.route, "Algorithm Weights", "Adjust scoring formula weights")
         ).forEach { (route, title, subtitle) ->
-            Card(modifier = Modifier.fillMaxWidth().clickable { navController.navigate(route) }, shape = RoundedCornerShape(16.dp)) {
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { navController.navigate(route) },
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -95,20 +234,42 @@ fun AdminDashboardScreen(navController: NavController) {
             }
         }
 
+        // ── Recent Scores ────────────────────────────────────────────────────
         if (scores.isNotEmpty()) {
             Text("Recent Scores", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Card(shape = RoundedCornerShape(16.dp)) {
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
                     scores.take(5).forEach { sc ->
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(HustleGreen), contentAlignment = Alignment.Center) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(HustleGreen),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text("${sc.totalScore}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Spacer(Modifier.width(12.dp))
                             Text(sc.grade.label, modifier = Modifier.weight(1f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            val gradeColor = when (sc.grade.label) { "Excellent" -> Color(0xFF16A34A) "Good" -> Color(0xFFCA8A04) "Fair" -> Color(0xFFEA580C) else -> Color(0xFFDC2626) }
+                            val gradeColor = when (sc.grade.label) {
+                                "Excellent" -> Color(0xFF16A34A)
+                                "Good"      -> Color(0xFFCA8A04)
+                                "Fair"      -> Color(0xFFEA580C)
+                                else        -> Color(0xFFDC2626)
+                            }
                             Surface(shape = RoundedCornerShape(8.dp), color = gradeColor.copy(alpha = 0.1f)) {
-                                Text(sc.grade.label, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), color = gradeColor, fontSize = 11.sp)
+                                Text(
+                                    sc.grade.label,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    color = gradeColor,
+                                    fontSize = 11.sp
+                                )
                             }
                         }
                     }
@@ -118,11 +279,22 @@ fun AdminDashboardScreen(navController: NavController) {
     }
 }
 
+// ── Reusable stat card (unchanged) ───────────────────────────────────────────
 @Composable
-fun AdminStatCard(modifier: Modifier, label: String, value: String, icon: ImageVector, color: Color, bgColor: Color) {
+fun AdminStatCard(
+    modifier: Modifier,
+    label: String,
+    value: String,
+    icon: ImageVector,
+    color: Color,
+    bgColor: Color
+) {
     Card(modifier = modifier, shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(4.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Box(modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(bgColor), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(bgColor),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.height(8.dp))
@@ -132,12 +304,11 @@ fun AdminStatCard(modifier: Modifier, label: String, value: String, icon: ImageV
     }
 }
 
-
-@Preview(showBackground = true)
+// ── Preview ───────────────────────────────────────────────────────────────────
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun AdminDashboardScreenPreview(){
-    AdminDashboardScreen(rememberNavController())
-
-
-
+fun AdminDashboardScreenPreview() {
+    HustleScoreTheme {
+        AdminDashboardScreen(navController = rememberNavController())
+    }
 }

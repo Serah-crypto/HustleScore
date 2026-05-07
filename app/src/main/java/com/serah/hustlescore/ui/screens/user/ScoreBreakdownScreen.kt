@@ -29,15 +29,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.compose.rememberNavController
 
 // Firebase Imports
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.DatabaseError
+import com.hustlescore.ui.theme.HustleScoreTheme
 
 import com.serah.hustlescore.components.ScoreGauge
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.Transaction
-import com.serah.hustlescore.navigation.Screen
+import com.serah.hustlescore.navigation.Routes
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextSecondary
@@ -77,7 +80,7 @@ fun ScoreBreakdownScreen(navController: NavController) {
                 Text("No Score Yet", fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 Text("Upload M-Pesa SMS first", color = TextSecondary, fontSize = 14.sp)
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = { navController.navigate(Screen.Upload.route) }, colors = ButtonDefaults.buttonColors(containerColor = HustleGreen)) {
+                Button(onClick = { navController.navigate(Routes.UploadSms.route) }, colors = ButtonDefaults.buttonColors(containerColor = HustleGreen)) {
                     Text("Upload SMS")
                 }
             }
@@ -154,13 +157,21 @@ fun ScoreBreakdownScreen(navController: NavController) {
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(modifier = Modifier.weight(1f), onClick = { navController.navigate(Screen.CreditReport.route) }) {
+            OutlinedButton(modifier = Modifier.weight(1f), onClick = { navController.navigate(Routes.CreditReport.route) }) {
                 Text("Download Report")
             }
-            Button(modifier = Modifier.weight(1f), onClick = { navController.navigate(Screen.Advice.route) },
+            Button(modifier = Modifier.weight(1f), onClick = { navController.navigate(Routes.FinancialAdvice.route) },
                 colors = ButtonDefaults.buttonColors(containerColor = HustleGreen)) {
                 Text("Get Advice")
             }
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ScoreBreakdownScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        ScoreBreakdownScreen(navController = rememberNavController())
     }
 }

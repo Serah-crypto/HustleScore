@@ -13,12 +13,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.hustlescore.ui.theme.*
+import com.serah.hustlescore.navigation.Routes
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextSecondary
@@ -109,7 +112,12 @@ fun ProfileScreen(navController: NavController) {
 
         // Sign Out
         Button(
-            onClick = { FirebaseAuth.getInstance().signOut() },
+            onClick = {
+                FirebaseAuth.getInstance().signOut()
+                navController.navigate(Routes.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
             shape = RoundedCornerShape(12.dp)
@@ -130,5 +138,13 @@ fun ProfileRow(label: String, value: String, icon: androidx.compose.ui.graphics.
             Text(label, fontSize = 10.sp, color = TextSecondary)
             Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ProfileScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        ProfileScreen(navController = rememberNavController())
     }
 }

@@ -1,6 +1,6 @@
-package com.hustlescore.screens.auth
+package com.hustlescore.ui.screens.auth
 
-import android.content.Context
+
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -31,12 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.serah.hustlescore.data.AuthState
 import com.serah.hustlescore.data.AuthViewModel
 import com.serah.hustlescore.navigation.Routes
-import com.serah.hustlescore.navigation.Screen
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextPrimary
 import com.serah.hustlescore.ui.theme.TextSecondary
@@ -57,26 +55,25 @@ fun LoginScreen(
     val authState by authViewModel.authState.collectAsState()
 
     LaunchedEffect(authState) {
-        when (val state = authState) {// In RegisterScreen & LoginScreen LaunchedEffect:
+        when (val state = authState) {
             is AuthState.Registered -> {
-                navController.navigate(Screen.Login.route) {
-                    popUpTo(0) { inclusive = true }  // FIX 5: clear full back stack
+                navController.navigate(Routes.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+                authViewModel.resetState()
+            }
+            is AuthState.LoggedIn -> {
+                navController.navigate(Routes.Home.route) {
+                    popUpTo(0) { inclusive = true }
                 }
                 authViewModel.resetState()
             }
 
-            is AuthState.LoggedIn -> {
-                val dest = if (state.role == "admin") Screen.AdminDashboard.route
-                else Screen.Dashboard.route
-                navController.navigate(dest) {
-                    popUpTo(0) { inclusive = true }  // FIX 5: user can't back-navigate to login
-                }
-                authViewModel.resetState()
-            }
+
 
             is AuthState.Error -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-                authViewModel.resetState()                      // FIX 2: same
+                authViewModel.resetState()
             }
             else -> {}
         }
@@ -184,7 +181,7 @@ fun LoginScreen(
                     )
 
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                        TextButton(onClick = { navController.navigate(Screen.ForgotPassword.route) }) {
+                        TextButton(onClick = { navController.navigate(Routes.ForgotPassword.route) }) {
                             Text(text = "Forgot Password?", color = HustleGreen, fontSize = 13.sp)
                         }
                     }
@@ -204,20 +201,30 @@ fun LoginScreen(
                     }
 
                     Button(
-                        onClick = { focusManager.clearFocus(); authViewModel.login(email, password) },
+                        onClick = {
+                            authViewModel.login(email, password) // ← actually log in first
+                        },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),
                         enabled = authState !is AuthState.Loading
                     ) {
                         if (authState is AuthState.Loading) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
                         } else {
                             Icon(Icons.Default.Login, contentDescription = "Login", modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = "Sign In", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
+
+
+
+
 
                     Spacer(modifier = Modifier.height(20.dp))
 
@@ -235,7 +242,7 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = "Don't have an account?", color = TextSecondary, fontSize = 14.sp)
-                        TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
+                        TextButton(onClick = { navController.navigate(Routes.Register.route) }) {
                             Text(text = "Sign Up", color = HustleGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }

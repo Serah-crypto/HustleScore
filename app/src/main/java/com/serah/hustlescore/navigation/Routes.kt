@@ -5,6 +5,7 @@ sealed class Routes(val route: String) {
     object Login           : Routes("login")
     object Register        : Routes("register")
     object ForgotPassword  : Routes("forgot_password")
+    object SplashScreen  : Routes("splashscreen")
 
     // ── User ───────────────────────────────────────────────────────────────
     object Home            : Routes("home")
@@ -31,7 +32,7 @@ sealed class Routes(val route: String) {
 
     companion object {
         val userBottomNavRoutes = setOf(
-            UserDashboard.route,
+            Home.route,
             CreditReport.route,
             Notifications.route,
             Profile.route,

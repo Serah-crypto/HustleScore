@@ -9,8 +9,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.hustlescore.screens.auth.LoginScreen
 import com.hustlescore.screens.user.ScoreBreakdownScreen
+import com.hustlescore.ui.screens.auth.LoginScreen
+import com.serah.hustlescore.ui.screens.SplashScreen
 import com.serah.hustlescore.ui.screens.admin.AdminDashboardScreen
 import com.serah.hustlescore.ui.screens.admin.AlgorithmWeightScreen
 import com.serah.hustlescore.ui.screens.admin.ScoringLogsScreen
@@ -24,6 +25,8 @@ import com.serah.hustlescore.ui.screens.user.DashboardScreen
 import com.serah.hustlescore.ui.screens.user.FinancialAdviceScreen
 import com.serah.hustlescore.ui.screens.user.HomeScreen
 import com.serah.hustlescore.ui.screens.user.NotificationsScreen
+import com.serah.hustlescore.ui.screens.user.ProfileScreen
+import com.serah.hustlescore.ui.screens.user.UploadSMSScreen
 
 @Composable
 fun AppNavHost(
@@ -45,6 +48,9 @@ fun AppNavHost(
         }
         composable(Routes.ForgotPassword.route) {
             ForgotPasswordScreen(navController)
+        }
+        composable(Routes.SplashScreen.route) {
+            SplashScreen(navController)
         }
 
         // ── User ───────────────────────────────────────────────────────────
@@ -110,7 +116,3 @@ fun AppNavHost(
     }
 }
 
-@Composable
-fun ProfileScreen(x0: NavHostController) {
-    TODO("Not yet implemented")
-}

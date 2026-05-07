@@ -28,8 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.serah.hustlescore.data.AuthState
 import com.serah.hustlescore.data.AuthViewModel
-import com.serah.hustlescore.navigation.Routes                // FIX 2: use Routes not Screen
-import com.serah.hustlescore.navigation.Screen
+import com.serah.hustlescore.navigation.Routes
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextPrimary
 import com.serah.hustlescore.ui.theme.TextSecondary
@@ -52,20 +51,21 @@ fun RegisterScreen(
     LaunchedEffect(authState) {
         when (val state = authState) {// In RegisterScreen & LoginScreen LaunchedEffect:
             is AuthState.Registered -> {
-                navController.navigate(Screen.Login.route) {
-                    popUpTo(0) { inclusive = true }  // FIX 5: clear full back stack
+                navController.navigate(Routes.Login.route) {  // ← was Screen.Login.route
+                    popUpTo(0) { inclusive = true }
                 }
                 authViewModel.resetState()
             }
 
             is AuthState.LoggedIn -> {
-                val dest = if (state.role == "admin") Screen.AdminDashboard.route
-                else Screen.Dashboard.route
+                val dest = if (state.role == "admin") Routes.AdminDashboard.route  // ← was Screen.AdminDashboard.route
+                else Routes.Home.route  // ← was Screen.Dashboard.route
                 navController.navigate(dest) {
-                    popUpTo(0) { inclusive = true }  // FIX 5: user can't back-navigate to login
+                    popUpTo(0) { inclusive = true }
                 }
                 authViewModel.resetState()
             }
+
 
             is AuthState.Error -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()

@@ -22,7 +22,7 @@ val userBottomNavItems = listOf(
     BottomNavItem(
         label = "Home",
         icon = Icons.Filled.Home,
-        route = Routes.UserDashboard.route,
+        route = Routes.Home.route,
     ),
     BottomNavItem(
         label = "Credit",

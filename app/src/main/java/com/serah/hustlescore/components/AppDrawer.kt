@@ -19,7 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.serah.hustlescore.navigation.Screen
+import com.serah.hustlescore.navigation.Routes
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.HustleDark
 
@@ -28,20 +28,20 @@ import com.serah.hustlescore.ui.theme.HustleDark
 data class NavItem(val label: String, val icon: ImageVector, val route: String)
 
 val userNavItems = listOf(
-    NavItem("Dashboard", Icons.Default.Home, Screen.Dashboard.route),
-    NavItem("Upload SMS", Icons.Default.Upload, Screen.Upload.route),
-    NavItem("My Score", Icons.Default.TrendingUp, Screen.ScoreBreakdown.route),
-    NavItem("Credit Report", Icons.Default.Description, Screen.CreditReport.route),
-    NavItem("Financial Advice", Icons.Default.Lightbulb, Screen.Advice.route),
-    NavItem("Notifications", Icons.Default.Notifications, Screen.Notifications.route),
-    NavItem("Profile", Icons.Default.Person, Screen.Profile.route),
+    NavItem("Dashboard", Icons.Default.Home, Routes.UserDashboard.route),
+    NavItem("Upload SMS", Icons.Default.Upload, Routes.UploadSms.route),
+    NavItem("My Score", Icons.Default.TrendingUp, Routes.ScoreBreakdown.route),
+    NavItem("Credit Report", Icons.Default.Description, Routes.CreditReport.route),
+    NavItem("Financial Advice", Icons.Default.Lightbulb, Routes.FinancialAdvice.route),
+    NavItem("Notifications", Icons.Default.Notifications, Routes.Notifications.route),
+    NavItem("Profile", Icons.Default.Person, Routes.Profile.route),
 )
 
 val adminNavItems = listOf(
-    NavItem("Admin Dashboard", Icons.Default.Dashboard, Screen.AdminDashboard.route),
-    NavItem("Users", Icons.Default.People, Screen.AdminUsers.route),
-    NavItem("Scoring Logs", Icons.Default.Assessment, Screen.AdminLogs.route),
-    NavItem("Algorithm Weights", Icons.Default.Tune, Screen.AdminWeights.route),
+    NavItem("Admin Dashboard", Icons.Default.Dashboard, Routes.AdminDashboard.route),
+    NavItem("Users", Icons.Default.People, Routes.UsersList.route),
+    NavItem("Scoring Logs", Icons.Default.Assessment, Routes.ScoringLogs.route),
+    NavItem("Algorithm Weights", Icons.Default.Tune, Routes.AlgorithmWeight.route),
 )
 
 @Composable

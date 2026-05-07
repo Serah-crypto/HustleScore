@@ -14,13 +14,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.database.*
-import com.hustlescore.ui.theme.*
+import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.models.AppUser
-import com.serah.hustlescore.navigation.Screen
+import com.serah.hustlescore.navigation.Routes
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextSecondary
@@ -62,7 +64,7 @@ fun UsersListScreen(navController: NavController) {
         else LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             itemsIndexed(filtered) { _, user ->
                 Card(
-                    modifier = Modifier.fillMaxWidth().clickable { navController.navigate(Screen.AdminUserDetail.createRoute(user.id)) },
+                    modifier = Modifier.fillMaxWidth().clickable { navController.navigate(Routes.UserDetail.createRoute(user.id)) },
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
@@ -95,5 +97,13 @@ fun UsersListScreen(navController: NavController) {
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun UsersListScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        UsersListScreen(navController = rememberNavController())
     }
 }

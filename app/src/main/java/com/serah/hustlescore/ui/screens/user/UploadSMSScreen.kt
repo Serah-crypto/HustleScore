@@ -53,18 +53,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
-import com.serah.hustlescore.navigation.Screen
-import com.serah.hustlescore.navigation.UploadSMSScreen
-import com.serah.hustlescore.ui.screens.admin.AlgorithmWeightScreen
+import com.serah.hustlescore.navigation.Routes
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextSecondary
 
 @Composable
-fun NavController.UploadSMSScreen() {
+fun UploadSMSScreen(navController: NavController)  {
     var smsText by remember { mutableStateOf("") }
     var parsedTransactions by remember { mutableStateOf<List<Transaction>?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -374,8 +373,9 @@ GHX33333 Confirmed. Ksh3000 paid to KPLC PREPAID on 10/03/2024 at 5:00 PM."""
                                     .push()
                                     .setValue(score)
                                 loading = false
-                                this@UploadSMSScreen.navigate(Screen.ScoreBreakdown.route)
-                            },
+                                navController.navigate(Routes.ScoreBreakdown.route)
+
+                                      },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),
                             shape = RoundedCornerShape(12.dp),
@@ -404,12 +404,19 @@ GHX33333 Confirmed. Ksh3000 paid to KPLC PREPAID on 10/03/2024 at 5:00 PM."""
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun UploadSMSScreenPreview(){
-    UploadSMSScreen(rememberNavController())
-
-
-
+fun UploadSMSScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        UploadSMSScreen(navController = rememberNavController())
+    }
 }
+
+
+
+
+
+
+
+
 

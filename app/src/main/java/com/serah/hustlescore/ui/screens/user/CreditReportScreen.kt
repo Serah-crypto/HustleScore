@@ -17,11 +17,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.HustleScore
 import com.serah.hustlescore.models.Transaction
@@ -272,71 +275,249 @@ fun generatePDF(
     email: String
 ) {
     val document = PdfDocument()
-    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
-    val page = document.startPage(pageInfo)
-    val canvas = page.canvas
-    val paint = Paint()
+    val W = 595f
+    val paint = Paint().apply { isAntiAlias = true }
+    val dateStr = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault()).format(java.util.Date())
 
+    // ── PAGE 1 ──────────────────────────────────────────────────────────────
+    val page1 = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
+    val c = page1.canvas
+
+    // Green header band
     paint.color = android.graphics.Color.parseColor("#1E8449")
-    canvas.drawRect(0f, 0f, 595f, 100f, paint)
+    c.drawRect(0f, 0f, W, 90f, paint)
 
     paint.color = android.graphics.Color.WHITE
-    paint.textSize = 24f
+    paint.textSize = 26f
     paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText("HustleScore", 30f, 45f, paint)
+    c.drawText("HustleScore", 30f, 50f, paint)
 
-    paint.color = android.graphics.Color.parseColor("#F8FAFC")
-    canvas.drawRect(30f, 120f, 565f, 220f, paint)
-
-    paint.color = android.graphics.Color.BLACK
-    paint.textSize = 14f
+    paint.textSize = 11f
     paint.typeface = Typeface.DEFAULT
-    canvas.drawText("Name: $name", 40f, 150f, paint)
-    canvas.drawText("Email: $email", 40f, 170f, paint)
-    canvas.drawText("Overall Score: ${score.totalScore} / 1000", 40f, 190f, paint)
-    canvas.drawText("Rating: ${score.grade.label}", 40f, 210f, paint)
+    paint.color = android.graphics.Color.parseColor("#A9DFBF")
+    c.drawText("Alternative Credit Profile  •  $dateStr", 30f, 72f, paint)
 
-    var yPos = 260f
-    paint.textSize = 16f
-    paint.typeface = Typeface.DEFAULT_BOLD
-    canvas.drawText("Score Factor Breakdown", 30f, yPos, paint)
+    // Big score badge (top-right)
+    paint.color = android.graphics.Color.parseColor("#145A32")
+    c.drawRoundRect(RectF(W - 120f, 10f, W - 10f, 80f), 12f, 12f, paint)
+    paint.color = android.graphics.Color.WHITE
+    paint.textSize = 30f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    val scoreText = "${score.totalScore}"
+    val scoreW = paint.measureText(scoreText)
+    c.drawText(scoreText, W - 65f - scoreW / 2, 52f, paint)
+    paint.textSize = 10f
+    paint.typeface = Typeface.DEFAULT
+    paint.color = android.graphics.Color.parseColor("#A9DFBF")
+    c.drawText("/ 1000  ${score.grade.label.uppercase()}", W - 110f, 70f, paint)
+
+    // Personal info box
+    paint.color = android.graphics.Color.parseColor("#F0F4F8")
+    c.drawRoundRect(RectF(20f, 102f, W - 20f, 185f), 10f, 10f, paint)
+    paint.color = android.graphics.Color.parseColor("#6B7280")
+    paint.textSize = 10f
+    c.drawText("FULL NAME", 32f, 120f, paint)
+    c.drawText("EMAIL", 32f, 148f, paint)
+    c.drawText("TRANSACTIONS", 310f, 120f, paint)
+    c.drawText("REPORT DATE", 310f, 148f, paint)
+    paint.color = android.graphics.Color.BLACK
+    paint.textSize = 12f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    c.drawText(name.ifBlank { "N/A" }, 32f, 135f, paint)
+    c.drawText(email.ifBlank { "N/A" }, 32f, 163f, paint)
+    c.drawText("${transactions.size}", 310f, 135f, paint)
+    c.drawText(dateStr, 310f, 163f, paint)
+    paint.typeface = Typeface.DEFAULT
+
+    // ── Financial Summary ────────────────────────────────────────────────────
+    var y = 205f
+    sectionTitle(c, paint, "Financial Summary", y)
+    y += 22f
+
+    val totalIncome   = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+    val totalExpenses = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+    val totalSavings  = transactions.filter { it.type == TransactionType.SAVINGS }.sumOf { it.amount }
+
+    val summaries = listOf(
+        Triple("Total Income",   "KSh ${"%,.0f".format(totalIncome)}",   "#16A34A"),
+        Triple("Total Expenses", "KSh ${"%,.0f".format(totalExpenses)}", "#DC2626"),
+        Triple("Total Savings",  "KSh ${"%,.0f".format(totalSavings)}",  "#2563EB")
+    )
+    val boxW = (W - 60f) / 3f
+    summaries.forEachIndexed { i, (label, value, hex) ->
+        val x = 20f + i * (boxW + 10f)
+        paint.color = android.graphics.Color.parseColor(hex).let {
+            android.graphics.Color.argb(30, android.graphics.Color.red(it), android.graphics.Color.green(it), android.graphics.Color.blue(it))
+        }
+        c.drawRoundRect(RectF(x, y, x + boxW, y + 52f), 8f, 8f, paint)
+        paint.color = android.graphics.Color.parseColor(hex)
+        paint.textSize = 15f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        c.drawText(value, x + 8f, y + 24f, paint)
+        paint.color = android.graphics.Color.parseColor("#6B7280")
+        paint.textSize = 10f
+        paint.typeface = Typeface.DEFAULT
+        c.drawText(label, x + 8f, y + 42f, paint)
+    }
+    y += 70f
+
+    // ── Score Breakdown ───────────────────────────────────────────────────────
+    sectionTitle(c, paint, "Score Breakdown", y)
+    y += 22f
 
     val factors = listOf(
-        "Income Stability" to score.incomeScore,
-        "Savings Ratio"    to score.savingsScore,
-        "Expense Control"  to score.expenseScore,
-        "Activity Score"   to score.activityScore
+        Triple("Income Stability",     score.incomeScore,   "#16A34A"),
+        Triple("Savings Ratio",        score.savingsScore,  "#2563EB"),
+        Triple("Expense Control",      score.expenseScore,  "#D97706"),
+        Triple("Transaction Activity", score.activityScore, "#7C3AED"),
+        Triple("Debt Behaviour",       score.debtScore,     "#DB2777")
     )
+    factors.forEach { (label, value, hex) ->
+        paint.color = android.graphics.Color.BLACK
+        paint.textSize = 11f
+        paint.typeface = Typeface.DEFAULT
+        c.drawText(label, 30f, y + 4f, paint)
 
-    paint.typeface = Typeface.DEFAULT
-    paint.textSize = 12f
-    factors.forEach { (label, value) ->
-        yPos += 30f
+        // Bar track
+        paint.color = android.graphics.Color.parseColor("#E5E7EB")
+        c.drawRoundRect(RectF(175f, y - 8f, 475f, y + 6f), 4f, 4f, paint)
+
+        // Bar fill
+        val fillW = (value / 1000f) * 300f
+        paint.color = android.graphics.Color.parseColor(hex)
+        if (fillW > 0) c.drawRoundRect(RectF(175f, y - 8f, 175f + fillW, y + 6f), 4f, 4f, paint)
+
+        // Value label
         paint.color = android.graphics.Color.BLACK
-        canvas.drawText(label, 30f, yPos, paint)
-        paint.color = android.graphics.Color.LTGRAY
-        canvas.drawRect(150f, yPos - 10f, 450f, yPos, paint)
-        paint.color = android.graphics.Color.parseColor("#16A34A")
-        canvas.drawRect(150f, yPos - 10f, 150f + (value / 1000f * 300f), yPos, paint)
-        paint.color = android.graphics.Color.BLACK
-        canvas.drawText("$value", 460f, yPos, paint)
+        paint.textSize = 11f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        c.drawText("$value", 482f, y + 4f, paint)
+
+        y += 28f
+    }
+    y += 10f
+
+    // ── Financial Advice ──────────────────────────────────────────────────────
+    val advice = HustleScoreEngine.getAdvice(score)
+    sectionTitle(c, paint, "Financial Advice", y)
+    y += 22f
+
+    advice.take(4).forEach { tip ->
+        paint.color = android.graphics.Color.parseColor("#F0FDF4")
+        c.drawRoundRect(RectF(20f, y - 12f, W - 20f, y + 22f), 8f, 8f, paint)
+        paint.color = android.graphics.Color.parseColor("#166534")
+        paint.textSize = 11f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        c.drawText("${tip.icon}  ${tip.title}", 30f, y + 2f, paint)
+        paint.color = android.graphics.Color.parseColor("#374151")
+        paint.textSize = 9f
+        paint.typeface = Typeface.DEFAULT
+        c.drawText(tip.description.take(90), 30f, y + 16f, paint)
+        y += 44f
     }
 
-    document.finishPage(page)
+    // Footer
+    paint.color = android.graphics.Color.parseColor("#9CA3AF")
+    paint.textSize = 9f
+    c.drawText("Generated by HustleScore  •  Confidential  •  Page 1", 30f, 825f, paint)
 
+    document.finishPage(page1)
+
+    // ── PAGE 2 — Transaction History ─────────────────────────────────────────
+    val page2 = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 2).create())
+    val c2 = page2.canvas
+
+    paint.color = android.graphics.Color.parseColor("#1E8449")
+    c2.drawRect(0f, 0f, W, 55f, paint)
+    paint.color = android.graphics.Color.WHITE
+    paint.textSize = 18f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    c2.drawText("Transaction History", 30f, 36f, paint)
+
+    // Table header
+    var y2 = 75f
+    paint.color = android.graphics.Color.parseColor("#F3F4F6")
+    c2.drawRect(20f, y2, W - 20f, y2 + 22f, paint)
+    paint.color = android.graphics.Color.parseColor("#374151")
+    paint.textSize = 10f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    c2.drawText("Date",        30f,  y2 + 15f, paint)
+    c2.drawText("Description", 120f, y2 + 15f, paint)
+    c2.drawText("Type",        330f, y2 + 15f, paint)
+    c2.drawText("Amount (KSh)",430f, y2 + 15f, paint)
+    y2 += 28f
+
+    val typeColors = mapOf(
+        TransactionType.INCOME         to "#16A34A",
+        TransactionType.EXPENSE        to "#DC2626",
+        TransactionType.SAVINGS        to "#2563EB",
+        TransactionType.LOAN_REPAYMENT to "#D97706"
+    )
+
+    transactions.take(25).forEachIndexed { idx, tx ->
+        if (idx % 2 == 0) {
+            paint.color = android.graphics.Color.parseColor("#F9FAFB")
+            c2.drawRect(20f, y2 - 10f, W - 20f, y2 + 10f, paint)
+        }
+        paint.color = android.graphics.Color.BLACK
+        paint.textSize = 9f
+        paint.typeface = Typeface.DEFAULT
+        c2.drawText(tx.date.take(10), 30f, y2 + 4f, paint)
+        c2.drawText(tx.description.take(30), 120f, y2 + 4f, paint)
+
+        paint.color = android.graphics.Color.parseColor(typeColors[tx.type] ?: "#374151")
+        c2.drawText(tx.type.name, 330f, y2 + 4f, paint)
+
+        paint.color = android.graphics.Color.BLACK
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        c2.drawText("%,.0f".format(tx.amount), 430f, y2 + 4f, paint)
+
+        y2 += 22f
+        if (y2 > 800f) return@forEachIndexed   // stop if page runs out
+    }
+
+    paint.color = android.graphics.Color.parseColor("#9CA3AF")
+    paint.textSize = 9f
+    paint.typeface = Typeface.DEFAULT
+    c2.drawText("Generated by HustleScore  •  Confidential  •  Page 2", 30f, 825f, paint)
+
+    document.finishPage(page2)
+
+    // ── Save & Open ───────────────────────────────────────────────────────────
     try {
         val file = File(context.cacheDir, "HustleScore_Report.pdf")
         document.writeTo(FileOutputStream(file))
         document.close()
+
         val uri = androidx.core.content.FileProvider.getUriForFile(
             context, "${context.packageName}.fileprovider", file
         )
         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/pdf")
-            flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(intent)
     } catch (e: Exception) {
         e.printStackTrace()
+    }
+}
+
+// Helper — draws a green section title with an underline
+private fun sectionTitle(canvas: Canvas, paint: Paint, title: String, y: Float) {
+    paint.color = android.graphics.Color.parseColor("#1E8449")
+    paint.textSize = 13f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    canvas.drawText(title, 20f, y, paint)
+    paint.strokeWidth = 1.5f
+    canvas.drawLine(20f, y + 4f, 575f, y + 4f, paint)
+    paint.strokeWidth = 0f
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun CreditReportScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        CreditReportScreen(navController = rememberNavController())
     }
 }

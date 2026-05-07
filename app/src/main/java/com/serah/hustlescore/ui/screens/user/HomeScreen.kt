@@ -1,7 +1,5 @@
 package com.serah.hustlescore.ui.screens.user
 
-
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Notifications
@@ -37,6 +37,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,27 +51,42 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.HustleScore
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
-import com.serah.hustlescore.navigation.Screen
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextPrimary
 import com.serah.hustlescore.ui.theme.TextSecondary
+import com.serah.hustlescore.navigation.Routes
 
 @Composable
+
 fun HomeScreen(navController: NavController) {
-    val currentUser = FirebaseAuth.getInstance().currentUser
+    // ── Observe auth state reactively ──────────────────────────────────
+    var currentUser by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser) }
+
+    // Keep currentUser in sync if auth state changes
+    DisposableEffect(Unit) {
+        val listener = FirebaseAuth.AuthStateListener { auth ->
+            currentUser = auth.currentUser
+        }
+        FirebaseAuth.getInstance().addAuthStateListener(listener)
+        onDispose { FirebaseAuth.getInstance().removeAuthStateListener(listener) }
+    }
+
     val firstName = currentUser?.displayName?.split(" ")?.firstOrNull() ?: "there"
     val initials = currentUser?.displayName
         ?.split(" ")
@@ -81,9 +97,29 @@ fun HomeScreen(navController: NavController) {
     var transactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
     var scoreData by remember { mutableStateOf<HustleScore?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var isAdmin by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    // ── Re-run whenever currentUser becomes non-null ───────────────────
+    LaunchedEffect(currentUser?.uid) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
+
+        android.util.Log.d("ADMIN_CHECK", "uid=$uid — checking role...")
+
+
+        FirebaseDatabase.getInstance().getReference("Users/$uid/role")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val role = snapshot.getValue(String::class.java)
+                    android.util.Log.d("ADMIN_CHECK", "role=$role")
+                    isAdmin = role == "admin"
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    android.util.Log.e("ADMIN_CHECK", "Error: ${error.message}")
+                }
+            })
+
+
+
         FirebaseDatabase.getInstance().getReference("transactions/$uid")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -97,6 +133,8 @@ fun HomeScreen(navController: NavController) {
                 }
             })
     }
+
+    // ... rest of your screen stays exactly the same
 
     val totalIncome = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
     val totalExpenses = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
@@ -116,7 +154,9 @@ fun HomeScreen(navController: NavController) {
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
 
-        // ── Top Header Banner ──────────────────────────────────────────
+
+
+        // ── Top Header Banner ─────────────────────────────────────────
         item {
             Box(
                 modifier = Modifier
@@ -129,14 +169,14 @@ fun HomeScreen(navController: NavController) {
                     .padding(horizontal = 20.dp, vertical = 28.dp)
             ) {
                 Column {
-                    // Top Row: Avatar + Notifications
+                    // Top Row: Avatar + Icons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Left: Avatar + Greeting
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Avatar
                             Box(
                                 modifier = Modifier
                                     .size(44.dp)
@@ -167,23 +207,67 @@ fun HomeScreen(navController: NavController) {
                             }
                         }
 
-                        // Notifications Bell
-                        Box {
+                        // Right: Admin (conditional) + Dashboard + Notifications
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+
+                            // ── Admin Panel shortcut — only visible to admins ──
+                            if (isAdmin) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color.White.copy(alpha = 0.18f))
+                                        .clickable {
+                                            navController.navigate(Routes.AdminDashboard.route)
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.AdminPanelSettings,
+                                            contentDescription = "Admin Panel",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(Modifier.width(5.dp))
+                                        Text(
+                                            text = "Admin",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+
                             IconButton(
-                                onClick = { navController.navigate(Screen.Notifications.route) }
+                                onClick = { navController.navigate(Routes.UserDashboard.route) }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = "Notifications",
+                                    imageVector = Icons.Default.Dashboard,
+                                    contentDescription = "Dashboard",
                                     tint = Color.White,
                                     modifier = Modifier.size(26.dp)
                                 )
                             }
-                            Badge(
-                                modifier = Modifier.align(Alignment.TopEnd),
-                                containerColor = Color(0xFFF59E0B)
-                            ) {
-                                Text(text = "3", fontSize = 9.sp, color = Color.White)
+                            Box {
+                                IconButton(
+                                    onClick = { navController.navigate(Routes.Notifications.route) }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Notifications",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                                Badge(
+                                    modifier = Modifier.align(Alignment.TopEnd),
+                                    containerColor = Color(0xFFF59E0B)
+                                ) {
+                                    Text(text = "3", fontSize = 9.sp, color = Color.White)
+                                }
                             }
                         }
                     }
@@ -289,7 +373,7 @@ fun HomeScreen(navController: NavController) {
                             )
                             Spacer(modifier = Modifier.height(14.dp))
                             Button(
-                                onClick = { navController.navigate(Screen.Upload.route) },
+                                onClick = { navController.navigate(Routes.UploadSms.route) },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White
                                 ),
@@ -353,7 +437,7 @@ fun HomeScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .clickable { navController.navigate(Screen.Upload.route) },
+                        .clickable { navController.navigate(Routes.UploadSms.route) },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -432,7 +516,7 @@ fun HomeScreen(navController: NavController) {
                                 color = HustleGreen,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.clickable {
-                                    navController.navigate(Screen.ScoreBreakdown.route)
+                                    navController.navigate(Routes.ScoreBreakdown.route)
                                 }
                             )
                         }
@@ -513,7 +597,7 @@ fun HomeScreen(navController: NavController) {
                         subtitle = "Full breakdown",
                         icon = Icons.Default.TrendingUp,
                         bgColor = Color(0xFF1D4ED8),
-                        onClick = { navController.navigate(Screen.ScoreBreakdown.route) }
+                        onClick = { navController.navigate(Routes.ScoreBreakdown.route) }
                     )
                     FeatureTile(
                         modifier = Modifier.weight(1f),
@@ -521,7 +605,7 @@ fun HomeScreen(navController: NavController) {
                         subtitle = "Download PDF",
                         icon = Icons.Default.Description,
                         bgColor = Color(0xFF7C3AED),
-                        onClick = { navController.navigate(Screen.CreditReport.route) }
+                        onClick = { navController.navigate(Routes.CreditReport.route) }
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -531,7 +615,7 @@ fun HomeScreen(navController: NavController) {
                         subtitle = "Financial tips",
                         icon = Icons.Default.Lightbulb,
                         bgColor = Color(0xFFD97706),
-                        onClick = { navController.navigate(Screen.Advice.route) }
+                        onClick = { navController.navigate(Routes.FinancialAdvice.route) }
                     )
                     FeatureTile(
                         modifier = Modifier.weight(1f),
@@ -539,7 +623,19 @@ fun HomeScreen(navController: NavController) {
                         subtitle = "Account settings",
                         icon = Icons.Default.Person,
                         bgColor = Color(0xFF0F766E),
-                        onClick = { navController.navigate(Screen.Profile.route) }
+                        onClick = { navController.navigate(Routes.Profile.route) }
+                    )
+                }
+
+                // ── Admin Panel tile — only visible to admins ──────────
+                if (isAdmin) {
+                    FeatureTile(
+                        modifier = Modifier.fillMaxWidth(),
+                        title = "Admin Panel",
+                        subtitle = "Manage platform & users",
+                        icon = Icons.Default.AdminPanelSettings,
+                        bgColor = Color(0xFFDC2626),
+                        onClick = { navController.navigate(Routes.AdminDashboard.route) }
                     )
                 }
             }
@@ -567,7 +663,7 @@ fun HomeScreen(navController: NavController) {
                         color = HustleGreen,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.clickable {
-                            navController.navigate(Screen.ScoreBreakdown.route)
+                            navController.navigate(Routes.ScoreBreakdown.route)
                         }
                     )
                 }
@@ -647,7 +743,7 @@ fun HomeScreen(navController: NavController) {
     }
 }
 
-// ── Supporting Composables ─────────────────────────────────────────────────
+// ── Supporting Composables (unchanged) ────────────────────────────────────
 
 @Composable
 private fun MiniStatCard(
@@ -667,17 +763,8 @@ private fun MiniStatCard(
             modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = value,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = valueColor
-            )
-            Text(
-                text = label,
-                fontSize = 10.sp,
-                color = valueColor.copy(alpha = 0.7f)
-            )
+            Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = valueColor)
+            Text(text = label, fontSize = 10.sp, color = valueColor.copy(alpha = 0.7f))
         }
     }
 }
@@ -712,18 +799,17 @@ private fun FeatureTile(
                 modifier = Modifier.size(26.dp)
             )
             Column {
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = subtitle,
-                    color = Color.White.copy(alpha = 0.75f),
-                    fontSize = 11.sp
-                )
+                Text(text = title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(text = subtitle, color = Color.White.copy(alpha = 0.75f), fontSize = 11.sp)
             }
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun HomeScreenPreview() {
+    HustleScoreTheme {
+        HomeScreen(navController = rememberNavController())
     }
 }

@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.HustleScore" parent="android:Theme.Material.Light.NoActionBar" />
+
+
+        <style name="Theme.HustleScore.Starting" parent="Theme.SplashScreen">
+            <item name="windowSplashScreenBackground">#F8FAF9</item>
+
+            <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+
+            <item name="postSplashScreenTheme">@style/Theme.HustleScore</item>
+        </style>
+
+        <style name="Theme.HustleScore" parent="android:Theme.Material.Light.NoActionBar">
+        </style>
+
 </resources>

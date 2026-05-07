@@ -49,7 +49,7 @@ object HustleScoreEngine {
         val incomeValues = monthlyIncome.values.map { list -> list.sumOf { it.amount } }
         val avgIncome = if (incomeValues.isNotEmpty()) incomeValues.average() else 0.0
         val variance = if (incomeValues.size > 1)
-            sqrt(incomeValues.map { (it - avgIncome).pow(2.0) }.average()) else TODO()
+            sqrt(incomeValues.map { (it - avgIncome).pow(2.0) }.average()) else 0.0
         val consistency = if (avgIncome > 0) max(0.0, 1.0 - (variance / avgIncome)) else 0.0
         val incomeScore = min(1000.0, (consistency * 600) + (min(totalIncome / 50000, 1.0) * 400))
 

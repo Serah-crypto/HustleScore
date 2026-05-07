@@ -19,6 +19,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.database.*
+import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.components.ScoreGauge
 
 // Update these imports to match your actual model locations
@@ -26,6 +27,7 @@ import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.AlgorithmWeights
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
+import com.serah.hustlescore.ui.screens.user.CreditReportScreen
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextSecondary
@@ -33,13 +35,13 @@ import com.serah.hustlescore.ui.theme.TextSecondary
 private val SAMPLE_TXS = listOf(
     Transaction(amount = 25000.0, type = TransactionType.INCOME, date = "2024-01-10",),
     Transaction(amount = 28000.0, type = TransactionType.INCOME, date = "2024-02-10",),
-    Transaction(amount = 8000.0, date = "2024-01-15",),
+    Transaction(amount = 8000.0, type = TransactionType.EXPENSE,date = "2024-01-15",),
     Transaction(amount = 5000.0, type = TransactionType.SAVINGS, date = "2024-01-20",),
     Transaction(amount = 3000.0, type = TransactionType.LOAN_REPAYMENT, date = "2024-01-25",),
 )
 
 @Composable
-fun AlgorithmWeightsScreen(navController: NavController) {
+fun AlgorithmWeightScreen(navController: NavController) {
     var incomeW by remember { mutableFloatStateOf(30f) }
     var savingsW by remember { mutableFloatStateOf(25f) }
     var expenseW by remember { mutableFloatStateOf(20f) }
@@ -215,16 +217,12 @@ fun AlgorithmWeightsScreen(navController: NavController) {
     }
 }
 
-@Preview(showBackground = true)
+
+
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun AlgorithmWeightScreenPreview(){
-    AlgorithmWeightScreen(rememberNavController())
-
-
-
-}
-
-@Composable
-fun AlgorithmWeightScreen(x0: NavHostController) {
-    TODO("Not yet implemented")
+fun AlgorithmWeightScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        AlgorithmWeightScreen(navController = rememberNavController())
+    }
 }

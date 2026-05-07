@@ -31,6 +31,7 @@ import androidx.compose.material3.ButtonDefaults.buttonColors
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,21 +48,23 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.components.ScoreGauge
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.HustleScore
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
 import com.serah.hustlescore.navigation.Routes
-import com.serah.hustlescore.navigation.Screen
 import com.serah.hustlescore.ui.theme.BackgroundGray
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.TextPrimary
@@ -193,7 +196,7 @@ fun DashboardScreen(navController: NavController) {
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                             OutlinedButton(
-                                onClick = { navController.navigate(Screen.ScoreBreakdown.route) },
+                                onClick = { navController.navigate(Routes.ScoreBreakdown.route) },
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = Color.White
                                 ),
@@ -223,7 +226,7 @@ fun DashboardScreen(navController: NavController) {
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = { navController.navigate(Screen.Upload.route) },
+                                onClick = { navController.navigate(Routes.UploadSms.route) },
                                 colors = buttonColors(
                                     containerColor = Color.White
                                 )
@@ -302,7 +305,7 @@ fun DashboardScreen(navController: NavController) {
                 icon = Icons.Default.Description,
                 color = Color(0xFF2563EB)
             ) {
-                navController.navigate(Screen.CreditReport.route)
+                navController.navigate(Routes.CreditReport.route)
             }
         }
 
@@ -313,7 +316,7 @@ fun DashboardScreen(navController: NavController) {
                 icon = Icons.Default.Lightbulb,
                 color = Color(0xFFF59E0B)
             ) {
-                navController.navigate(Screen.Advice.route)
+                navController.navigate(Routes.FinancialAdvice.route)
             }
         }
 
@@ -334,7 +337,7 @@ fun DashboardScreen(navController: NavController) {
         // ✅ FIXED: Wrap the Button inside item { }
         item {
             Button(
-                onClick = { navController.navigate(Screen.AddTransaction.route) },
+                onClick = { navController.navigate(Routes.AddTransaction.route) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),           // Slightly better height
@@ -408,9 +411,18 @@ fun QuickActionCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable(
+                onClick = onClick,
+                enabled = true
+            ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(   // Use this instead
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -430,11 +442,22 @@ fun QuickActionCard(
                     modifier = Modifier.size(22.dp)
                 )
             }
+
             Spacer(modifier = Modifier.width(14.dp))
+
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(text = subtitle, color = TextSecondary, fontSize = 12.sp)
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = subtitle,
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
             }
+
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -443,6 +466,7 @@ fun QuickActionCard(
         }
     }
 }
+
 
 @Composable
 fun TransactionListItem(transaction: Transaction) {
@@ -490,5 +514,15 @@ fun TransactionListItem(transaction: Transaction) {
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp
         )
+    }
+}
+
+
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun DashboardScreenPreview() {
+    HustleScoreTheme {   // Replace with your actual Theme name if different
+        DashboardScreen(navController = rememberNavController())
     }
 }
