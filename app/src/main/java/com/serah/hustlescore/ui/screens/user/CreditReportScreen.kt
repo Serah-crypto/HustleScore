@@ -1,7 +1,12 @@
 package com.serah.hustlescore.ui.screens.user
 
 import android.content.Context
-import android.graphics.*
+import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color as AndroidColor
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -12,41 +17,42 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.HustleScore
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
-import com.serah.hustlescore.ui.theme.BackgroundGray
-import com.serah.hustlescore.ui.theme.HustleGreen
-import com.serah.hustlescore.ui.theme.TextSecondary
+import com.serah.hustlescore.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.*
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 @Composable
 fun CreditReportScreen(navController: NavController) {
-    val context = LocalContext.current
-    var scoreData by remember { mutableStateOf<HustleScore?>(null) }
+    val context      = LocalContext.current
+    var scoreData    by remember { mutableStateOf<HustleScore?>(null) }
     var transactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
-    var loading by remember { mutableStateOf(true) }
-    var generating by remember { mutableStateOf(false) }
+    var loading      by remember { mutableStateOf(true) }
+    var generating   by remember { mutableStateOf(false) }
+
     val currentUser = FirebaseAuth.getInstance().currentUser
-    val scope = rememberCoroutineScope()           // FIX 1: moved here, single scope at top level
+    val scope       = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
@@ -55,8 +61,8 @@ fun CreditReportScreen(navController: NavController) {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val txs = snapshot.children.mapNotNull { it.getValue(Transaction::class.java) }
                     transactions = txs
-                    scoreData = if (txs.isNotEmpty()) HustleScoreEngine.calculate(txs) else null
-                    loading = false
+                    scoreData    = if (txs.isNotEmpty()) HustleScoreEngine.calculate(txs) else null
+                    loading      = false
                 }
                 override fun onCancelled(error: DatabaseError) { loading = false }
             })
@@ -80,7 +86,7 @@ fun CreditReportScreen(navController: NavController) {
                 Text("Credit Report", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text("Your official HustleScore profile", fontSize = 13.sp, color = TextSecondary)
             }
-            // FIX 2: single Button, coroutine-based, correct text
+
             if (scoreData != null) {
                 Button(
                     onClick = {
@@ -88,162 +94,77 @@ fun CreditReportScreen(navController: NavController) {
                             generating = true
                             withContext(Dispatchers.IO) {
                                 generatePDF(
-                                    context, scoreData!!, transactions,
-                                    currentUser?.displayName ?: "User",
-                                    currentUser?.email ?: ""
+                                    context,
+                                    scoreData!!,
+                                    transactions,
+                                    currentUser?.displayName.orEmpty(),
+                                    currentUser?.email.orEmpty()
                                 )
                             }
                             generating = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),
+                    colors  = ButtonDefaults.buttonColors(containerColor = HustleGreen),
                     enabled = !generating
                 ) {
                     if (generating) {
                         CircularProgressIndicator(
-                            color = Color.White,
-                            modifier = Modifier.size(16.dp),
+                            color       = Color.White,
+                            modifier    = Modifier.size(16.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Icon(
-                            Icons.Default.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = if (generating) "Generating..." else "Download PDF",
-                        fontSize = 13.sp
-                    )
+                    Text(if (generating) "Generating..." else "Download PDF", fontSize = 13.sp)
                 }
             }
         }
 
-        if (loading) {
-            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = HustleGreen)
-            }
-        } else if (scoreData == null) {
-            Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(2.dp, Color(0xFFE5E7EB))) {
-                Column(
+        when {
+            loading -> {
+                Box(
                     modifier = Modifier.fillMaxWidth().padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(48.dp), tint = TextSecondary)
-                    Spacer(Modifier.height(12.dp))
-                    Text("No Report Available", fontWeight = FontWeight.SemiBold)
-                    Text("Upload your M-Pesa SMS to generate a report.", color = TextSecondary, fontSize = 13.sp)
-                }
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator(color = HustleGreen) }
             }
-        } else {
-            val score = scoreData!!
-            val totalIncome   = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-            val totalExpenses = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-            val totalSavings  = transactions.filter { it.type == TransactionType.SAVINGS }.sumOf { it.amount }
-
-
-
-            // Report Header Card
-            Card(shape = RoundedCornerShape(20.dp), elevation = CardDefaults.cardElevation(8.dp)) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Brush.linearGradient(listOf(HustleGreen, Color(0xFF145A32))))
-                            .padding(20.dp)
+            scoreData == null -> {
+                Card(shape = RoundedCornerShape(16.dp), border = BorderStroke(2.dp, Color(0xFFE5E7EB))) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column {
-                                Text("HustleScore", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
-                                Text("Alternative Credit Profile", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                                Text(
-                                    java.text.SimpleDateFormat("dd MMMM yyyy").format(java.util.Date()),
-                                    color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp
-                                )
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("${score.totalScore}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 40.sp)
-                                Text("/ 1000", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                                Surface(shape = RoundedCornerShape(12.dp), color = Color.White.copy(alpha = 0.2f)) {
-                                    Text(
-                                        score.grade.label,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                        color = Color.White, fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            InfoField(Modifier.weight(1f), "Full Name", currentUser?.displayName ?: "N/A")
-                            InfoField(Modifier.weight(1f), "Report Date", java.text.SimpleDateFormat("dd/MM/yyyy").format(java.util.Date()))
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            InfoField(Modifier.weight(1f), "Email", currentUser?.email ?: "N/A")
-                            InfoField(Modifier.weight(1f), "Transactions", "${transactions.size}")
-                        }
+                        Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(48.dp), tint = TextSecondary)
+                        Spacer(Modifier.height(12.dp))
+                        Text("No Report Available", fontWeight = FontWeight.SemiBold)
+                        Text("Upload your M-Pesa SMS to generate a report.", color = TextSecondary, fontSize = 13.sp)
                     }
                 }
             }
+            else -> {
+                val score        = scoreData!!
+                val totalIncome  = transactions.filter { it.type == TransactionType.RECEIVED }.sumOf { it.amount }
+                val totalExpenses= transactions.filter { it.type == TransactionType.SENT    }.sumOf { it.amount }
+                val totalSavings = transactions.filter { it.type == TransactionType.SAVINGS  }.sumOf { it.amount }
 
-            // Financial Summary
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Financial Summary", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
-                        SummaryItem("Income",   "KSh ${(totalIncome   / 1000).toInt()}k", Color(0xFF16A34A))
-                        SummaryItem("Expenses", "KSh ${(totalExpenses / 1000).toInt()}k", Color(0xFFDC2626))
-                        SummaryItem("Savings",  "KSh ${(totalSavings  / 1000).toInt()}k", Color(0xFF2563EB))
+                // Score card
+                Card(shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("HustleScore", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("${score.totalScore}", fontSize = 48.sp, fontWeight = FontWeight.Black, color = HustleGreen)
+                        Text("Grade: ${score.grade}", fontSize = 14.sp, color = TextSecondary)
                     }
                 }
-            }
 
-            // Score Breakdown
-            Card(shape = RoundedCornerShape(16.dp)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Score Breakdown", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Spacer(Modifier.height(12.dp))
-                    listOf(
-                        "Income Stability"     to score.incomeScore,
-                        "Savings Ratio"        to score.savingsScore,
-                        "Expense Control"      to score.expenseScore,
-                        "Transaction Activity" to score.activityScore,
-                        "Debt Behavior"        to score.debtScore
-                    ).forEach { (label, value) ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(label, modifier = Modifier.width(130.dp), fontSize = 12.sp, color = TextSecondary)
-                            Box(
-                                modifier = Modifier.weight(1f).height(6.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(Color(0xFFE5E7EB))
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(value / 1000f)
-                                        .height(6.dp)
-                                        .clip(RoundedCornerShape(3.dp))
-                                        .background(HustleScoreEngine.getScoreColor(value))
-                                )
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "$value", fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.width(36.dp),
-                                color = HustleScoreEngine.getScoreColor(score.totalScore)
-                            )
-                        }
+                // Summary card
+                Card(shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Financial Summary", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        SummaryRow("Total Income",   "KES ${formatAmount(totalIncome)}")
+                        SummaryRow("Total Expenses", "KES ${formatAmount(totalExpenses)}")
+                        SummaryRow("Total Savings",  "KES ${formatAmount(totalSavings)}")
+                        SummaryRow("Transactions",   "${transactions.size}")
                     }
                 }
             }
@@ -252,20 +173,17 @@ fun CreditReportScreen(navController: NavController) {
 }
 
 @Composable
-fun InfoField(modifier: Modifier = Modifier, label: String, value: String) {
-    Column(modifier = modifier.padding(end = 8.dp)) {
-        Text(label, fontSize = 10.sp, color = TextSecondary)
-        Text(value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+private fun SummaryRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = TextSecondary, fontSize = 13.sp)
+        Text(value, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
 
-@Composable
-fun SummaryItem(label: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = color)
-        Text(label, fontSize = 12.sp, color = TextSecondary)
-    }
-}
+private fun formatAmount(amount: Double): String =
+    NumberFormat.getNumberInstance(Locale.US).apply { maximumFractionDigits = 2 }.format(amount)
+
+// ─── PDF Generation ───────────────────────────────────────────────────────────
 
 fun generatePDF(
     context: Context,
@@ -274,250 +192,238 @@ fun generatePDF(
     name: String,
     email: String
 ) {
-    val document = PdfDocument()
-    val W = 595f
-    val paint = Paint().apply { isAntiAlias = true }
-    val dateStr = java.text.SimpleDateFormat("dd MMMM yyyy", java.util.Locale.getDefault()).format(java.util.Date())
+    // ── Computed totals ───────────────────────────────────────────────────────
+    val totalIncome   = transactions.filter { it.type == TransactionType.RECEIVED }.sumOf { it.amount }
+    val totalExpenses = transactions.filter { it.type == TransactionType.SENT     }.sumOf { it.amount }
+    val totalSavings  = transactions.filter { it.type == TransactionType.SAVINGS   }.sumOf { it.amount }
+    val today         = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())
 
-    // ── PAGE 1 ──────────────────────────────────────────────────────────────
-    val page1 = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 1).create())
-    val c = page1.canvas
+    // ── PDF document setup ────────────────────────────────────────────────────
+    val document   = PdfDocument()
+    val pageWidth  = 595   // A4 points width
+    val pageHeight = 842   // A4 points height
 
-    // Green header band
-    paint.color = android.graphics.Color.parseColor("#1E8449")
-    c.drawRect(0f, 0f, W, 90f, paint)
-
-    paint.color = android.graphics.Color.WHITE
-    paint.textSize = 26f
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    c.drawText("HustleScore", 30f, 50f, paint)
-
-    paint.textSize = 11f
-    paint.typeface = Typeface.DEFAULT
-    paint.color = android.graphics.Color.parseColor("#A9DFBF")
-    c.drawText("Alternative Credit Profile  •  $dateStr", 30f, 72f, paint)
-
-    // Big score badge (top-right)
-    paint.color = android.graphics.Color.parseColor("#145A32")
-    c.drawRoundRect(RectF(W - 120f, 10f, W - 10f, 80f), 12f, 12f, paint)
-    paint.color = android.graphics.Color.WHITE
-    paint.textSize = 30f
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    val scoreText = "${score.totalScore}"
-    val scoreW = paint.measureText(scoreText)
-    c.drawText(scoreText, W - 65f - scoreW / 2, 52f, paint)
-    paint.textSize = 10f
-    paint.typeface = Typeface.DEFAULT
-    paint.color = android.graphics.Color.parseColor("#A9DFBF")
-    c.drawText("/ 1000  ${score.grade.label.uppercase()}", W - 110f, 70f, paint)
-
-    // Personal info box
-    paint.color = android.graphics.Color.parseColor("#F0F4F8")
-    c.drawRoundRect(RectF(20f, 102f, W - 20f, 185f), 10f, 10f, paint)
-    paint.color = android.graphics.Color.parseColor("#6B7280")
-    paint.textSize = 10f
-    c.drawText("FULL NAME", 32f, 120f, paint)
-    c.drawText("EMAIL", 32f, 148f, paint)
-    c.drawText("TRANSACTIONS", 310f, 120f, paint)
-    c.drawText("REPORT DATE", 310f, 148f, paint)
-    paint.color = android.graphics.Color.BLACK
-    paint.textSize = 12f
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    c.drawText(name.ifBlank { "N/A" }, 32f, 135f, paint)
-    c.drawText(email.ifBlank { "N/A" }, 32f, 163f, paint)
-    c.drawText("${transactions.size}", 310f, 135f, paint)
-    c.drawText(dateStr, 310f, 163f, paint)
-    paint.typeface = Typeface.DEFAULT
-
-    // ── Financial Summary ────────────────────────────────────────────────────
-    var y = 205f
-    sectionTitle(c, paint, "Financial Summary", y)
-    y += 22f
-
-    val totalIncome   = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-    val totalExpenses = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-    val totalSavings  = transactions.filter { it.type == TransactionType.SAVINGS }.sumOf { it.amount }
-
-    val summaries = listOf(
-        Triple("Total Income",   "KSh ${"%,.0f".format(totalIncome)}",   "#16A34A"),
-        Triple("Total Expenses", "KSh ${"%,.0f".format(totalExpenses)}", "#DC2626"),
-        Triple("Total Savings",  "KSh ${"%,.0f".format(totalSavings)}",  "#2563EB")
-    )
-    val boxW = (W - 60f) / 3f
-    summaries.forEachIndexed { i, (label, value, hex) ->
-        val x = 20f + i * (boxW + 10f)
-        paint.color = android.graphics.Color.parseColor(hex).let {
-            android.graphics.Color.argb(30, android.graphics.Color.red(it), android.graphics.Color.green(it), android.graphics.Color.blue(it))
-        }
-        c.drawRoundRect(RectF(x, y, x + boxW, y + 52f), 8f, 8f, paint)
-        paint.color = android.graphics.Color.parseColor(hex)
-        paint.textSize = 15f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        c.drawText(value, x + 8f, y + 24f, paint)
-        paint.color = android.graphics.Color.parseColor("#6B7280")
-        paint.textSize = 10f
-        paint.typeface = Typeface.DEFAULT
-        c.drawText(label, x + 8f, y + 42f, paint)
+    // ── Reusable paints ───────────────────────────────────────────────────────
+    fun paint(
+        color:     Int   = AndroidColor.BLACK,
+        size:      Float = 12f,
+        bold:      Boolean = false,
+        align:     Paint.Align = Paint.Align.LEFT
+    ) = Paint().apply {
+        this.color     = color
+        this.textSize  = size
+        this.typeface  = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        this.textAlign = align
+        this.isAntiAlias = true
     }
-    y += 70f
 
-    // ── Score Breakdown ───────────────────────────────────────────────────────
-    sectionTitle(c, paint, "Score Breakdown", y)
-    y += 22f
-
-    val factors = listOf(
-        Triple("Income Stability",     score.incomeScore,   "#16A34A"),
-        Triple("Savings Ratio",        score.savingsScore,  "#2563EB"),
-        Triple("Expense Control",      score.expenseScore,  "#D97706"),
-        Triple("Transaction Activity", score.activityScore, "#7C3AED"),
-        Triple("Debt Behaviour",       score.debtScore,     "#DB2777")
-    )
-    factors.forEach { (label, value, hex) ->
-        paint.color = android.graphics.Color.BLACK
-        paint.textSize = 11f
-        paint.typeface = Typeface.DEFAULT
-        c.drawText(label, 30f, y + 4f, paint)
-
-        // Bar track
-        paint.color = android.graphics.Color.parseColor("#E5E7EB")
-        c.drawRoundRect(RectF(175f, y - 8f, 475f, y + 6f), 4f, 4f, paint)
-
-        // Bar fill
-        val fillW = (value / 1000f) * 300f
-        paint.color = android.graphics.Color.parseColor(hex)
-        if (fillW > 0) c.drawRoundRect(RectF(175f, y - 8f, 175f + fillW, y + 6f), 4f, 4f, paint)
-
-        // Value label
-        paint.color = android.graphics.Color.BLACK
-        paint.textSize = 11f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        c.drawText("$value", 482f, y + 4f, paint)
-
-        y += 28f
+    fun rectPaint(color: Int, style: Paint.Style = Paint.Style.FILL) = Paint().apply {
+        this.color   = color
+        this.style   = style
+        this.isAntiAlias = true
     }
-    y += 10f
 
-    // ── Financial Advice ──────────────────────────────────────────────────────
-    val advice = HustleScoreEngine.getAdvice(score)
-    sectionTitle(c, paint, "Financial Advice", y)
-    y += 22f
+    // ────────────────────────────────────────────────────────────────────────
+    // PAGE 1 — Summary
+    // ────────────────────────────────────────────────────────────────────────
+    val page1Info = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+    val page1     = document.startPage(page1Info)
+    val c1: Canvas = page1.canvas
 
-    advice.take(4).forEach { tip ->
-        paint.color = android.graphics.Color.parseColor("#F0FDF4")
-        c.drawRoundRect(RectF(20f, y - 12f, W - 20f, y + 22f), 8f, 8f, paint)
-        paint.color = android.graphics.Color.parseColor("#166534")
-        paint.textSize = 11f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        c.drawText("${tip.icon}  ${tip.title}", 30f, y + 2f, paint)
-        paint.color = android.graphics.Color.parseColor("#374151")
-        paint.textSize = 9f
-        paint.typeface = Typeface.DEFAULT
-        c.drawText(tip.description.take(90), 30f, y + 16f, paint)
-        y += 44f
+    // Header bar (green)
+    c1.drawRect(RectF(0f, 0f, pageWidth.toFloat(), 90f), rectPaint(AndroidColor.rgb(22, 163, 74)))
+
+    // Header text
+    c1.drawText("HustleScore", 30f, 38f, paint(AndroidColor.WHITE, 26f, bold = true))
+    c1.drawText("Official Credit Report", 30f, 60f, paint(AndroidColor.WHITE, 13f))
+    c1.drawText("Generated: $today", pageWidth - 30f, 60f,
+        paint(AndroidColor.WHITE, 11f, align = Paint.Align.RIGHT))
+
+    // Divider
+    c1.drawRect(RectF(0f, 90f, pageWidth.toFloat(), 92f), rectPaint(AndroidColor.rgb(187, 247, 208)))
+
+    // User info section
+    var y = 120f
+    c1.drawText("Report For", 30f, y, paint(AndroidColor.GRAY, 10f))
+    y += 18f
+    c1.drawText(name.ifBlank { "N/A" }, 30f, y, paint(AndroidColor.BLACK, 15f, bold = true))
+    y += 16f
+    c1.drawText(email.ifBlank { "N/A" }, 30f, y, paint(AndroidColor.GRAY, 11f))
+
+    // Score badge box
+    val badgeLeft   = pageWidth - 160f
+    val badgeTop    = 105f
+    val badgeRight  = pageWidth - 30f
+    val badgeBottom = 175f
+    c1.drawRoundRect(RectF(badgeLeft, badgeTop, badgeRight, badgeBottom), 12f, 12f,
+        rectPaint(AndroidColor.rgb(240, 253, 244)))
+    c1.drawRoundRect(RectF(badgeLeft, badgeTop, badgeRight, badgeBottom), 12f, 12f,
+        rectPaint(AndroidColor.rgb(22, 163, 74), Paint.Style.STROKE).apply { strokeWidth = 1.5f })
+    c1.drawText("${score.totalScore}", (badgeLeft + badgeRight) / 2f, badgeTop + 42f,
+        paint(AndroidColor.rgb(22, 163, 74), 36f, bold = true, align = Paint.Align.CENTER))
+    c1.drawText("Grade: ${score.grade}", (badgeLeft + badgeRight) / 2f, badgeTop + 58f,
+        paint(AndroidColor.GRAY, 11f, align = Paint.Align.CENTER))
+
+    // Section divider
+    y = 195f
+    c1.drawRect(RectF(30f, y, pageWidth - 30f, y + 1f), rectPaint(AndroidColor.LTGRAY))
+    y += 20f
+
+    // Financial summary heading
+    c1.drawText("FINANCIAL SUMMARY", 30f, y, paint(AndroidColor.rgb(22, 163, 74), 10f, bold = true))
+    y += 20f
+
+    // Summary rows helper
+    fun summaryRow(label: String, value: String, yPos: Float): Float {
+        val rowBottom = yPos + 32f
+        c1.drawRect(RectF(30f, yPos, pageWidth - 30f, rowBottom),
+            rectPaint(AndroidColor.rgb(248, 250, 252)))
+        c1.drawText(label, 44f, yPos + 21f, paint(AndroidColor.DKGRAY, 12f))
+        c1.drawText(value, pageWidth - 44f, yPos + 21f,
+            paint(AndroidColor.BLACK, 12f, bold = true, align = Paint.Align.RIGHT))
+        return rowBottom + 4f
+    }
+
+    y = summaryRow("Total Income",        "KES ${formatAmount(totalIncome)}",   y)
+    y = summaryRow("Total Expenses",      "KES ${formatAmount(totalExpenses)}", y)
+    y = summaryRow("Total Savings",       "KES ${formatAmount(totalSavings)}",  y)
+    y = summaryRow("Total Transactions",  "${transactions.size}",               y)
+    y = summaryRow("Net Balance",
+        "KES ${formatAmount(totalIncome - totalExpenses)}", y)
+
+    // Score breakdown heading
+    y += 16f
+    c1.drawRect(RectF(30f, y, pageWidth - 30f, y + 1f), rectPaint(AndroidColor.LTGRAY))
+    y += 20f
+    c1.drawText("SCORE BREAKDOWN", 30f, y, paint(AndroidColor.rgb(22, 163, 74), 10f, bold = true))
+    y += 20f
+
+    // Score sub-metrics (use whichever fields exist on HustleScore)
+    listOf(
+        "Income Regularity Score"   to score.incomeScore,
+        "Savings Score"             to score.savingsScore,
+        "Expense Control Score"     to score.expenseScore,
+        "Transaction Volume Score"  to score.activityScore
+    ).forEach { (label, value) ->
+        y = summaryRow(label, "$value / 100", y)
     }
 
     // Footer
-    paint.color = android.graphics.Color.parseColor("#9CA3AF")
-    paint.textSize = 9f
-    c.drawText("Generated by HustleScore  •  Confidential  •  Page 1", 30f, 825f, paint)
+    c1.drawRect(RectF(0f, pageHeight - 40f, pageWidth.toFloat(), pageHeight.toFloat()),
+        rectPaint(AndroidColor.rgb(240, 253, 244)))
+    c1.drawText(
+        "HustleScore — Empowering Kenya's Informal Workers  |  Confidential",
+        pageWidth / 2f, pageHeight - 14f,
+        paint(AndroidColor.GRAY, 9f, align = Paint.Align.CENTER)
+    )
 
     document.finishPage(page1)
 
-    // ── PAGE 2 — Transaction History ─────────────────────────────────────────
-    val page2 = document.startPage(PdfDocument.PageInfo.Builder(595, 842, 2).create())
-    val c2 = page2.canvas
+    // ────────────────────────────────────────────────────────────────────────
+    // PAGE 2 — Transaction List
+    // ────────────────────────────────────────────────────────────────────────
+    val page2Info = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 2).create()
+    val page2     = document.startPage(page2Info)
+    val c2: Canvas = page2.canvas
 
-    paint.color = android.graphics.Color.parseColor("#1E8449")
-    c2.drawRect(0f, 0f, W, 55f, paint)
-    paint.color = android.graphics.Color.WHITE
-    paint.textSize = 18f
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    c2.drawText("Transaction History", 30f, 36f, paint)
+    // Header bar
+    c2.drawRect(RectF(0f, 0f, pageWidth.toFloat(), 70f), rectPaint(AndroidColor.rgb(22, 163, 74)))
+    c2.drawText("Transaction History", 30f, 35f, paint(AndroidColor.WHITE, 18f, bold = true))
+    c2.drawText("Last ${minOf(transactions.size, 25)} transactions", 30f, 54f,
+        paint(AndroidColor.WHITE, 11f))
 
     // Table header
-    var y2 = 75f
-    paint.color = android.graphics.Color.parseColor("#F3F4F6")
-    c2.drawRect(20f, y2, W - 20f, y2 + 22f, paint)
-    paint.color = android.graphics.Color.parseColor("#374151")
-    paint.textSize = 10f
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    c2.drawText("Date",        30f,  y2 + 15f, paint)
-    c2.drawText("Description", 120f, y2 + 15f, paint)
-    c2.drawText("Type",        330f, y2 + 15f, paint)
-    c2.drawText("Amount (KSh)",430f, y2 + 15f, paint)
-    y2 += 28f
+    var y2 = 90f
+    c2.drawRect(RectF(20f, y2, pageWidth - 20f, y2 + 26f),
+        rectPaint(AndroidColor.rgb(22, 163, 74)))
 
-    val typeColors = mapOf(
-        TransactionType.INCOME         to "#16A34A",
-        TransactionType.EXPENSE        to "#DC2626",
-        TransactionType.SAVINGS        to "#2563EB",
-        TransactionType.LOAN_REPAYMENT to "#D97706"
-    )
+    val colDate   = 30f
+    val colDesc   = 120f
+    val colType   = 330f
+    val colAmount = pageWidth - 30f
 
+    val headerPaint = paint(AndroidColor.WHITE, 11f, bold = true)
+    c2.drawText("Date",        colDate,   y2 + 18f, headerPaint)
+    c2.drawText("Description", colDesc,   y2 + 18f, headerPaint)
+    c2.drawText("Type",        colType,   y2 + 18f, headerPaint)
+    c2.drawText("Amount (KES)",colAmount, y2 + 18f,
+        paint(AndroidColor.WHITE, 11f, bold = true, align = Paint.Align.RIGHT))
+
+    y2 += 30f
+
+    // Transaction rows
     transactions.take(25).forEachIndexed { idx, tx ->
-        if (idx % 2 == 0) {
-            paint.color = android.graphics.Color.parseColor("#F9FAFB")
-            c2.drawRect(20f, y2 - 10f, W - 20f, y2 + 10f, paint)
+        // Alternating row bg
+        val rowBg = if (idx % 2 == 0) AndroidColor.WHITE else AndroidColor.rgb(248, 250, 252)
+        c2.drawRect(RectF(20f, y2, pageWidth - 20f, y2 + 28f), rectPaint(rowBg))
+
+        // Row text paint
+        val rowPaint = paint(AndroidColor.DKGRAY, 10f)
+
+        // Date
+        c2.drawText(tx.date.orEmpty().take(10), colDate, y2 + 19f, rowPaint)
+
+        // Description (truncated)
+        c2.drawText(tx.description.orEmpty().take(30), colDesc, y2 + 19f, rowPaint)
+
+        // Type badge color
+        val typeColor = when (tx.type) {
+            TransactionType.RECEIVED -> AndroidColor.rgb(22,  163, 74)
+            TransactionType.SENT     -> AndroidColor.rgb(220, 38,  38)
+            TransactionType.SAVINGS  -> AndroidColor.rgb(37,  99,  235)
+            else                     -> AndroidColor.GRAY
         }
-        paint.color = android.graphics.Color.BLACK
-        paint.textSize = 9f
-        paint.typeface = Typeface.DEFAULT
-        c2.drawText(tx.date.take(10), 30f, y2 + 4f, paint)
-        c2.drawText(tx.description.take(30), 120f, y2 + 4f, paint)
+        c2.drawText(tx.type?.name ?: "—", colType, y2 + 19f,
+            paint(typeColor, 10f, bold = true))
 
-        paint.color = android.graphics.Color.parseColor(typeColors[tx.type] ?: "#374151")
-        c2.drawText(tx.type.name, 330f, y2 + 4f, paint)
+        // Amount (right-aligned)
+        c2.drawText(formatAmount(tx.amount), colAmount, y2 + 19f,
+            paint(AndroidColor.BLACK, 10f, bold = true, align = Paint.Align.RIGHT))
 
-        paint.color = android.graphics.Color.BLACK
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        c2.drawText("%,.0f".format(tx.amount), 430f, y2 + 4f, paint)
+        // Row separator
+        c2.drawRect(RectF(20f, y2 + 28f, pageWidth - 20f, y2 + 29f),
+            rectPaint(AndroidColor.LTGRAY))
 
-        y2 += 22f
-        if (y2 > 800f) return@forEachIndexed   // stop if page runs out
+        y2 += 29f
+
+        // Safety: start new page if we overflow (basic guard)
+        if (y2 > pageHeight - 60f) return@forEachIndexed
     }
 
-    paint.color = android.graphics.Color.parseColor("#9CA3AF")
-    paint.textSize = 9f
-    paint.typeface = Typeface.DEFAULT
-    c2.drawText("Generated by HustleScore  •  Confidential  •  Page 2", 30f, 825f, paint)
+    // Footer
+    c2.drawRect(RectF(0f, pageHeight - 40f, pageWidth.toFloat(), pageHeight.toFloat()),
+        rectPaint(AndroidColor.rgb(240, 253, 244)))
+    c2.drawText(
+        "HustleScore — Empowering Kenya's Informal Workers  |  Page 2",
+        pageWidth / 2f, pageHeight - 14f,
+        paint(AndroidColor.GRAY, 9f, align = Paint.Align.CENTER)
+    )
 
     document.finishPage(page2)
 
-    // ── Save & Open ───────────────────────────────────────────────────────────
+    // ── Save & open ───────────────────────────────────────────────────────────
     try {
-        val file = File(context.cacheDir, "HustleScore_Report.pdf")
-        document.writeTo(FileOutputStream(file))
+        val fileName = "HustleScore_Report_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
+        val file     = File(context.getExternalFilesDir(null), fileName)
+
+        FileOutputStream(file).use { document.writeTo(it) }
         document.close()
 
-        val uri = androidx.core.content.FileProvider.getUriForFile(
-            context, "${context.packageName}.fileprovider", file
+        // Open with a PDF viewer
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            file
         )
-        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/pdf")
-            flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
+
     } catch (e: Exception) {
         e.printStackTrace()
-    }
-}
-
-// Helper — draws a green section title with an underline
-private fun sectionTitle(canvas: Canvas, paint: Paint, title: String, y: Float) {
-    paint.color = android.graphics.Color.parseColor("#1E8449")
-    paint.textSize = 13f
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    canvas.drawText(title, 20f, y, paint)
-    paint.strokeWidth = 1.5f
-    canvas.drawLine(20f, y + 4f, 575f, y + 4f, paint)
-    paint.strokeWidth = 0f
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun CreditReportScreenPreview() {
-    HustleScoreTheme {   // Replace with your actual Theme name if different
-        CreditReportScreen(navController = rememberNavController())
+        document.close()
     }
 }

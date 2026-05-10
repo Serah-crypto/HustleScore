@@ -6,8 +6,8 @@ import android.content.Intent
 import android.provider.Telephony
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.Transaction
+import com.serah.hustlescore.models.TransactionType
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -42,45 +42,40 @@ class MpesaSmsReceiver : BroadcastReceiver() {
         val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
         return when {
-            // Received money: "You have received Ksh1,000.00 from JOHN DOE"
             body.contains("You have received", ignoreCase = true) -> {
                 val amount = extractAmount(body) ?: return null
                 val desc = extractName(body, "from") ?: "M-Pesa Received"
-                Transaction(type = "income", amount = amount, date = dateStr, description = "Received from $desc", rawSms = body)
+                Transaction(amount = amount, type = TransactionType.INCOME, date = dateStr, description = "Received from $desc", rawSms = body)
             }
-            // Sent money: "Ksh500.00 sent to JANE DOE"
             body.contains("sent to", ignoreCase = true) -> {
                 val amount = extractAmount(body) ?: return null
                 val desc = extractName(body, "to") ?: "M-Pesa Sent"
-                Transaction(type = "expense", amount = amount, date = dateStr, description = "Sent to $desc", rawSms = body)
+                Transaction(amount = amount, type = TransactionType.EXPENSE, date = dateStr, description = "Sent to $desc", rawSms = body)
             }
-            // Payment: "Ksh200.00 paid to KPLC PREPAID"
             body.contains("paid to", ignoreCase = true) -> {
                 val amount = extractAmount(body) ?: return null
                 val desc = extractName(body, "to") ?: "M-Pesa Payment"
-                Transaction(type = "expense", amount = amount, date = dateStr, description = "Paid to $desc", rawSms = body)
+                Transaction(amount = amount, type = TransactionType.EXPENSE, date = dateStr, description = "Paid to $desc", rawSms = body)
             }
-            // Withdrawal: "Withdraw Ksh1,000.00 from"
             body.contains("Withdraw", ignoreCase = true) -> {
                 val amount = extractAmount(body) ?: return null
-                Transaction(type = "expense", amount = amount, date = dateStr, description = "ATM/Agent Withdrawal", rawSms = body)
+                Transaction(amount = amount, type = TransactionType.EXPENSE, date = dateStr, description = "ATM/Agent Withdrawal", rawSms = body)
             }
-            // Buy Airtime
             body.contains("airtime", ignoreCase = true) -> {
                 val amount = extractAmount(body) ?: return null
-                Transaction(type = "expense", amount = amount, date = dateStr, description = "Airtime Purchase", category = "airtime", rawSms = body)
+                Transaction(amount = amount, type = TransactionType.EXPENSE, date = dateStr, description = "Airtime Purchase", category = "airtime", rawSms = body)
             }
-            // Loan repayment: "your loan payment"
             body.contains("loan", ignoreCase = true) -> {
                 val amount = extractAmount(body) ?: return null
-                Transaction(type = "loan_repayment", amount = amount, date = dateStr, description = "Loan Repayment", rawSms = body)
+                Transaction(amount = amount, type = TransactionType.LOAN_REPAYMENT, date = dateStr, description = "Loan Repayment", rawSms = body)
             }
-            // Deposit / savings
             body.contains("deposited", ignoreCase = true) -> {
                 val amount = extractAmount(body) ?: return null
-                Transaction(type = "savings", amount = amount, date = dateStr, description = "M-Pesa Deposit", rawSms = body)
+                Transaction(amount = amount, type = TransactionType.SAVINGS, date = dateStr, description = "M-Pesa Deposit", rawSms = body)
             }
             else -> null
+        }
+
         }
     }
 
@@ -94,4 +89,3 @@ class MpesaSmsReceiver : BroadcastReceiver() {
         val regex = Regex("""$keyword\s+([A-Z][A-Z\s]+?)(?:\s+on|\s+\d|\.|$)""", RegexOption.IGNORE_CASE)
         return regex.find(body)?.groupValues?.get(1)?.trim()
     }
-}

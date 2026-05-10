@@ -62,11 +62,13 @@ class MainActivity : ComponentActivity() {
                     }
 
                     else -> {
+
                         val showUserBottomNav =
-                            currentRoute in Routes.userBottomNavRoutes
+                            currentRoute in Routes.UserBottomNavRoutes
 
                         val showAdminBottomNav =
-                            currentRoute in Routes.adminBottomNavRoutes
+                            currentRoute in Routes.AdminBottomNavRoutes
+
 
                         Scaffold(
                             bottomBar = {

@@ -496,10 +496,11 @@ fun TransactionListItem(transaction: Transaction) {
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = transaction.description.ifBlank { "M-Pesa Transaction" },
+                text = transaction.description.orEmpty().ifBlank { "M-Pesa Transaction" },
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
+
             Text(
                 text = transaction.date,
                 fontSize = 11.sp,

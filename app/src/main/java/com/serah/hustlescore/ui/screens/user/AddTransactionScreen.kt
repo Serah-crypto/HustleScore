@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.hustlescore.ui.theme.HustleScoreTheme
+import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
 import com.serah.hustlescore.ui.theme.*
 import java.text.SimpleDateFormat
@@ -38,16 +39,19 @@ private data class TypeConfig(
 )
 
 private val typeConfigs = listOf(
-    TypeConfig(TransactionType.INCOME, "Income", "💰", Color(0xFF16A34A), Color(0xFFDCFCE7)),
-    TypeConfig(TransactionType.EXPENSE, "Expense", "💸", Color(0xFFDC2626), Color(0xFFFEE2E2)),
+    TypeConfig(TransactionType.RECEIVED, "Income", "💰", Color(0xFF16A34A), Color(0xFFDCFCE7)),
+    TypeConfig(TransactionType.SENT, "Expense", "💸", Color(0xFFDC2626), Color(0xFFFEE2E2)),
     TypeConfig(TransactionType.SAVINGS, "Savings", "🏦", Color(0xFF2563EB), Color(0xFFDBEAFE)),
     TypeConfig(TransactionType.LOAN_REPAYMENT, "Loan Repayment", "✅", Color(0xFF7C3AED), Color(0xFFEDE9FE))
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTransactionScreen(navController: NavController) {
-    var selectedType by remember { mutableStateOf(TransactionType.INCOME) }
+fun AddTransactionScreen(
+    navController: NavController,
+    onSaveTransaction: (Transaction) -> Unit = {}   // Pass save logic from ViewModel
+) {
+    var selectedType by remember { mutableStateOf(TransactionType.RECEIVED) }
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
@@ -56,25 +60,26 @@ fun AddTransactionScreen(navController: NavController) {
     }
     var showDatePicker by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
-    var saved by remember { mutableStateOf(false) }
 
     val activeConfig = typeConfigs.first { it.type == selectedType }
 
-    // Date Picker Dialog
+    // Date Picker
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
 
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        selectedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                            .format(Date(millis))
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            selectedDate = sdf.format(Date(millis))
+                        }
+                        showDatePicker = false
                     }
-                    showDatePicker = false
-                }) {
-                    Text("OK")
+                ) {
+                    Text("Select", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -99,42 +104,22 @@ fun AddTransactionScreen(navController: NavController) {
         // Top Bar
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { navController.popBackStack() }) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Back", tint = TextPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
             Column {
-                Text(
-                    text = "Add Transaction",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "Record income, expense, savings or repayment",
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
+                Text("Add Transaction", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text("Record income, expense, savings or repayment", fontSize = 12.sp, color = TextSecondary)
             }
         }
 
-        // Transaction Type Selector
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
+        // Type Selector
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Transaction Type",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextSecondary
-                )
+                Text("Transaction Type", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     typeConfigs.take(2).forEach { config ->
                         TypeChip(
                             config = config,
@@ -144,13 +129,8 @@ fun AddTransactionScreen(navController: NavController) {
                         )
                     }
                 }
-
                 Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     typeConfigs.drop(2).forEach { config ->
                         TypeChip(
                             config = config,
@@ -163,17 +143,9 @@ fun AddTransactionScreen(navController: NavController) {
             }
         }
 
-        // Form Fields
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Amount, Description, Category, Date fields remain the same...
-                // (I've kept them exactly as you had them for brevity)
+        // Form
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
                 OutlinedTextField(
                     value = amount,
@@ -183,10 +155,7 @@ fun AddTransactionScreen(navController: NavController) {
                     placeholder = { Text("e.g. 5000") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     leadingIcon = { Text(activeConfig.emoji, fontSize = 18.sp) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = activeConfig.color,
-                        focusedLabelColor = activeConfig.color
-                    ),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = activeConfig.color),
                     shape = RoundedCornerShape(12.dp)
                 )
 
@@ -195,12 +164,7 @@ fun AddTransactionScreen(navController: NavController) {
                     onValueChange = { description = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Description") },
-                    placeholder = { Text("Add a short description...") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = activeConfig.color,
-                        focusedLabelColor = activeConfig.color
-                    ),
-                    shape = RoundedCornerShape(12.dp),
+                    placeholder = { Text("Salary, groceries, etc.") },
                     maxLines = 2
                 )
 
@@ -209,12 +173,7 @@ fun AddTransactionScreen(navController: NavController) {
                     onValueChange = { category = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Category (optional)") },
-                    placeholder = { Text("e.g. salary, groceries, emergency") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = activeConfig.color,
-                        focusedLabelColor = activeConfig.color
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                    placeholder = { Text("e.g. salary, shopping") }
                 )
 
                 OutlinedTextField(
@@ -227,81 +186,51 @@ fun AddTransactionScreen(navController: NavController) {
                         IconButton(onClick = { showDatePicker = true }) {
                             Icon(Icons.Default.CalendarToday, contentDescription = null, tint = activeConfig.color)
                         }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = activeConfig.color,
-                        focusedLabelColor = activeConfig.color
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-        }
-
-        // Amount Preview Banner
-        if (amount.isNotBlank()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(activeConfig.bgColor)
-                    .border(1.dp, activeConfig.color.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(text = activeConfig.label, fontSize = 12.sp, color = activeConfig.color)
-                        Text(
-                            text = "KSh ${amount.toDoubleOrNull()?.let { String.format("%,.0f", it) } ?: amount}",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Black,
-                            color = activeConfig.color
-                        )
-                        if (description.isNotBlank()) {
-                            Text(
-                                text = description,
-                                fontSize = 12.sp,
-                                color = activeConfig.color.copy(alpha = 0.7f)
-                            )
-                        }
                     }
-                    Text(text = activeConfig.emoji, fontSize = 40.sp)
-                }
+                )
             }
         }
 
         // Save Button
         Button(
-            onClick = { /* your save logic */ },
+            onClick = {
+                if (amount.isBlank()) return@Button
+
+                saving = true
+
+                val transaction = Transaction(
+                    type = selectedType,
+                    amount = amount.toDoubleOrNull() ?: 0.0,
+                    date = selectedDate,
+                    description = description.ifBlank { null },
+                    category = if (category.isBlank()) null else category
+                )
+
+                onSaveTransaction(transaction)
+
+                // Optional: Reset after saving (or handle in ViewModel)
+                // saving = false
+                // navController.popBackStack()
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
-            enabled = amount.isNotBlank() && !saving,
+            enabled = !saving && amount.isNotBlank(),
             colors = ButtonDefaults.buttonColors(containerColor = activeConfig.color),
             shape = RoundedCornerShape(14.dp)
         ) {
             if (saving) {
                 Text("Saving...", fontWeight = FontWeight.Bold)
             } else {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
                 Text("Save ${activeConfig.label}", fontWeight = FontWeight.Bold)
             }
         }
 
-        if (saved) {
-            // Success banner (kept as you had it)
-            // ... your success UI
+
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
-}
 
-// TypeChip remains the same
+
 @Composable
 private fun TypeChip(
     config: TypeConfig,
@@ -313,13 +242,9 @@ private fun TypeChip(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(if (isSelected) config.color else config.bgColor)
-            .border(
-                width = if (isSelected) 0.dp else 1.dp,
-                color = config.color.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp)
-            )
+            .border(1.dp, config.color.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(vertical = 12.dp, horizontal = 8.dp),
+            .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -335,12 +260,10 @@ private fun TypeChip(
     }
 }
 
-// ====================== PREVIEW ======================
-
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true)
 @Composable
 fun AddTransactionScreenPreview() {
-    HustleScoreTheme {   // Replace with your actual Theme name if different
+    HustleScoreTheme {
         AddTransactionScreen(navController = rememberNavController())
     }
 }

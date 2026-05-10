@@ -25,7 +25,7 @@ import com.serah.hustlescore.ui.screens.user.DashboardScreen
 import com.serah.hustlescore.ui.screens.user.FinancialAdviceScreen
 import com.serah.hustlescore.ui.screens.user.HomeScreen
 import com.serah.hustlescore.ui.screens.user.NotificationsScreen
-import com.serah.hustlescore.ui.screens.user.ProfileScreen
+import com.serah.hustlescore.ui.screens.user.UserProfileScreen
 import com.serah.hustlescore.ui.screens.user.UploadSMSScreen
 
 @Composable
@@ -69,8 +69,8 @@ fun AppNavHost(
         composable(Routes.Notifications.route) {
             NotificationsScreen(navController)
         }
-        composable(Routes.Profile.route) {
-            ProfileScreen(navController)
+        composable(Routes.UserProfile.route) {
+            UserProfileScreen(navController)
         }
         composable(Routes.ScoreBreakdown.route) {
             ScoreBreakdownScreen(navController)

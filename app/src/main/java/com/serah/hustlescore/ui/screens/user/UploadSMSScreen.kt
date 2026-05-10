@@ -1,5 +1,6 @@
 package com.serah.hustlescore.ui.screens.user
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,7 +50,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -331,7 +331,7 @@ GHX33333 Confirmed. Ksh3000 paid to KPLC PREPAID on 10/03/2024 at 5:00 PM."""
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = tx.description,
+                                    text = tx.description.toString(),
                                     modifier = Modifier.weight(1f),
                                     fontSize = 12.sp,
                                     maxLines = 1
@@ -362,20 +362,30 @@ GHX33333 Confirmed. Ksh3000 paid to KPLC PREPAID on 10/03/2024 at 5:00 PM."""
                                     loading = false
                                     return@Button
                                 }
-                                val db = FirebaseDatabase.getInstance()
-                                    .getReference("transactions/$uid")
-                                parsed.forEach { tx ->
-                                    db.push().setValue(tx.copy(userId = uid))
-                                }
-                                val score = HustleScoreEngine.calculate(parsed)
-                                FirebaseDatabase.getInstance()
-                                    .getReference("scores/$uid")
-                                    .push()
-                                    .setValue(score)
-                                loading = false
-                                navController.navigate(Routes.ScoreBreakdown.route)
 
-                                      },
+                                val db = FirebaseDatabase.getInstance().getReference("transactions/$uid")
+                                val scoreRef = FirebaseDatabase.getInstance().getReference("scores/$uid")
+
+                                // Save all transactions
+                                var tasks = parsed.map { tx ->
+                                    db.push().setValue(tx.copy(UserId = uid))
+                                }
+
+                                // Save score
+                                val score = HustleScoreEngine.calculate(parsed)
+                                tasks += scoreRef.push().setValue(score)
+
+                                // Wait for all writes to complete
+                                com.google.android.gms.tasks.Tasks.whenAllComplete(tasks)
+                                    .addOnSuccessListener {
+                                        loading = false
+                                        navController.navigate(Routes.ScoreBreakdown.route)
+                                    }
+                                    .addOnFailureListener { e ->
+                                        loading = false
+                                        Log.e("FirebaseSave", "Failed to save data", e)
+                                    }
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),
                             shape = RoundedCornerShape(12.dp),

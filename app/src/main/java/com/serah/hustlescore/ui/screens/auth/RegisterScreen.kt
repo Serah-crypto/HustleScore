@@ -17,7 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext           // FIX 1: added
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
@@ -45,32 +45,36 @@ fun RegisterScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current                        // FIX 1: was missing
+    val context = LocalContext.current
     val authState by authViewModel.authState.collectAsState()
 
     LaunchedEffect(authState) {
-        when (val state = authState) {// In RegisterScreen & LoginScreen LaunchedEffect:
+        when (val state = authState) {
+
+            // ✅ First-time user: go straight to profile completion form
             is AuthState.Registered -> {
-                navController.navigate(Routes.Login.route) {  // ← was Screen.Login.route
+                navController.navigate(Routes.UserDetailForm.route) {
                     popUpTo(0) { inclusive = true }
                 }
                 authViewModel.resetState()
             }
 
+            // ✅ If somehow already logged in (e.g. re-registration edge case):
+            //    respect role-based routing
             is AuthState.LoggedIn -> {
-                val dest = if (state.role == "admin") Routes.AdminDashboard.route  // ← was Screen.AdminDashboard.route
-                else Routes.Home.route  // ← was Screen.Dashboard.route
+                val dest = if (state.role == "admin") Routes.AdminDashboard.route
+                else Routes.Home.route
                 navController.navigate(dest) {
                     popUpTo(0) { inclusive = true }
                 }
                 authViewModel.resetState()
             }
 
-
             is AuthState.Error -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
-                authViewModel.resetState()                   // FIX 3: same
+                authViewModel.resetState()
             }
+
             else -> {}
         }
     }
@@ -192,7 +196,7 @@ fun RegisterScreen(
 
                     passwordStrength?.let { (label, color, fraction) ->
                         LinearProgressIndicator(
-                            progress = { fraction },           // FIX 4: lambda form avoids deprecation
+                            progress = { fraction },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 8.dp)
@@ -211,7 +215,7 @@ fun RegisterScreen(
                         onValueChange = { confirmPassword = it },
                         label = { Text("Confirm Password") },
                         isError = passwordsMismatch,
-                        supportingText = {                     // FIX 5: show mismatch message
+                        supportingText = {
                             if (passwordsMismatch) Text("Passwords do not match", color = MaterialTheme.colorScheme.error)
                         },
                         visualTransformation = PasswordVisualTransformation(),
@@ -252,7 +256,7 @@ fun RegisterScreen(
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),
-                        enabled = authState !is AuthState.Loading && !passwordsMismatch  // FIX 6: block submit on mismatch
+                        enabled = authState !is AuthState.Loading && !passwordsMismatch
                     ) {
                         if (authState is AuthState.Loading) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
@@ -266,8 +270,11 @@ fun RegisterScreen(
                     Spacer(Modifier.height(16.dp))
 
                     TextButton(
-                        onClick = { navController.navigate(Routes.Login.route) {
-                            popUpTo(0) { inclusive = true }}},
+                        onClick = {
+                            navController.navigate(Routes.Login.route) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) {
                         Text("Already have an account? Sign In", color = HustleGreen)

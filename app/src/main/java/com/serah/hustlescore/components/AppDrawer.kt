@@ -34,7 +34,7 @@ val userNavItems = listOf(
     NavItem("Credit Report", Icons.Default.Description, Routes.CreditReport.route),
     NavItem("Financial Advice", Icons.Default.Lightbulb, Routes.FinancialAdvice.route),
     NavItem("Notifications", Icons.Default.Notifications, Routes.Notifications.route),
-    NavItem("Profile", Icons.Default.Person, Routes.Profile.route),
+    NavItem("Profile", Icons.Default.Person, Routes.UserProfile.route),
 )
 
 val adminNavItems = listOf(

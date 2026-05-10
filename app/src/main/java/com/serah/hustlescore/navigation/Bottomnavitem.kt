@@ -37,7 +37,7 @@ val userBottomNavItems = listOf(
     BottomNavItem(
         label = "Profile",
         icon = Icons.Filled.Person,
-        route = Routes.Profile.route,
+        route = Routes.UserProfile.route,
     ),
 )
 

@@ -34,6 +34,7 @@ object HustleScoreEngine {
     ): HustleScore {
         if (transactions.isEmpty()) return HustleScore()
 
+
         val income = transactions.filter { it.type == TransactionType.INCOME }
         val expenses = transactions.filter { it.type == TransactionType.EXPENSE }
         val savings = transactions.filter { it.type == TransactionType.SAVINGS }

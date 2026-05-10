@@ -1,29 +1,5 @@
 package com.serah.hustlescore.models
 
-
-
-data class Transaction(
-    val amount: Double,
-    val type: TransactionType,
-    val id: String = "",
-    val userId: String = "",
-    val date: String = "",
-    val description: String = "",
-    val category: String = "",
-    val rawSms: String = "",
-    val mpesaRef: String = ""
-)
-
-enum class TransactionType {
-    EXPENSE,
-    SAVINGS,
-    LOAN_REPAYMENT,
-    INCOME
-}
-
-
-
-
 data class HustleScore(
     val totalScore: Int = 0,
     val incomeScore: Int = 0,
@@ -80,4 +56,22 @@ data class AppNotification(
     val isRead: Boolean = false,
     val createdAt: Long = 0L
 )
+
+
+// ─── Data Model ───────────────────────────────────────────────────────────────
+
+data class UserProfile(
+    val uid: String = "",
+    val fullName: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val occupation: String = "",
+    val monthlyIncome: String = "",
+    val county: String = "",
+    val idNumber: String = "",
+    val employer: String = "",
+    val bio: String = "",
+    val profileComplete: Boolean = false
+)
+
 

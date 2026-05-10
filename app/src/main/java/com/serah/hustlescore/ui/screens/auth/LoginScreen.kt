@@ -1,6 +1,5 @@
 package com.hustlescore.ui.screens.auth
 
-
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -51,30 +50,39 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current                          // FIX 1: was missing
+    val context = LocalContext.current
     val authState by authViewModel.authState.collectAsState()
 
     LaunchedEffect(authState) {
         when (val state = authState) {
+
+            // ✅ Should not normally fire from Login, but handle gracefully:
+            //    a brand-new user who somehow hits login after registering
+            //    gets sent to the detail form, not home
             is AuthState.Registered -> {
-                navController.navigate(Routes.Login.route) {
+                navController.navigate(Routes.UserDetailForm.route) {
                     popUpTo(0) { inclusive = true }
                 }
                 authViewModel.resetState()
             }
+
+            // ✅ Returning user: role-based routing
+            //    admin  → AdminDashboard
+            //    user   → Home (then they can navigate to Profile / UserDetailForm)
             is AuthState.LoggedIn -> {
-                navController.navigate(Routes.Home.route) {
+                val dest = if (state.role == "admin") Routes.AdminDashboard.route
+                else Routes.Home.route
+                navController.navigate(dest) {
                     popUpTo(0) { inclusive = true }
                 }
                 authViewModel.resetState()
             }
-
-
 
             is AuthState.Error -> {
                 Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
                 authViewModel.resetState()
             }
+
             else -> {}
         }
     }
@@ -201,9 +209,7 @@ fun LoginScreen(
                     }
 
                     Button(
-                        onClick = {
-                            authViewModel.login(email, password) // ← actually log in first
-                        },
+                        onClick = { authViewModel.login(email, password) },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),
@@ -221,10 +227,6 @@ fun LoginScreen(
                             Text(text = "Sign In", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
-
-
-
-
 
                     Spacer(modifier = Modifier.height(20.dp))
 
@@ -256,7 +258,6 @@ fun LoginScreen(
     }
 }
 
-// FIX 3: Preview calls the real composable properly, stub function removed
 @Preview(showBackground = true)
 @Composable
 fun LoginScreenPreview() {

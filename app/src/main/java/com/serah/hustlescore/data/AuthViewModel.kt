@@ -3,7 +3,11 @@ package com.serah.hustlescore.data
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import com.serah.hustlescore.models.UserProfile
 import com.serah.sokohub.models.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -102,4 +106,52 @@ class AuthViewModel : ViewModel() {
     fun resetState() {
         _authState.value = AuthState.Idle
     }
+
+
+// ─── ViewModel ────────────────────────────────────────────────────────────────
+
+    class UserProfileViewModel : ViewModel() {
+
+        private val db = FirebaseDatabase.getInstance().reference
+        private val auth = FirebaseAuth.getInstance()
+
+        private val _profile = MutableStateFlow<UserProfile?>(null)
+        val profile: StateFlow<UserProfile?> = _profile
+
+        private val _isLoading = MutableStateFlow(true)
+        val isLoading: StateFlow<Boolean> = _isLoading
+
+        private val _error = MutableStateFlow<String?>(null)
+        val error: StateFlow<String?> = _error
+
+        init {
+            fetchProfile()
+        }
+
+        fun fetchProfile() {
+            val uid = auth.currentUser?.uid ?: run {
+                _error.value = "User not authenticated"
+                _isLoading.value = false
+                return
+            }
+
+            _isLoading.value = true
+            _error.value = null
+
+            db.child("users").child(uid).child("profile")
+                .addValueEventListener(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val profile = snapshot.getValue(UserProfile::class.java)
+                        _profile.value = profile?.copy(uid = uid)
+                        _isLoading.value = false
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        _error.value = error.message
+                        _isLoading.value = false
+                    }
+                })
+        }
+    }
 }
+
