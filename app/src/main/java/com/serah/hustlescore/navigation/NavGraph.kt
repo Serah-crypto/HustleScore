@@ -24,12 +24,14 @@ import com.serah.hustlescore.ui.screens.user.NotificationsScreen
 import com.serah.hustlescore.ui.screens.user.UploadSMSScreen
 import com.serah.hustlescore.ui.screens.user.UserDetailFormScreen
 import com.serah.hustlescore.ui.screens.user.UserProfileScreen
+import com.serah.hustlescore.ui.theme.ThemeViewModel
 
 @Composable
 fun NavGraph(
     navController: NavHostController,
     isAdmin: Boolean,
-    startDestination: String
+    startDestination: String,
+    themeViewModel: ThemeViewModel
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -50,6 +52,12 @@ fun NavGraph(
         }
 
         // ── User ───────────────────────────────────────────────────────
+        composable(Routes.UserProfile.route) {
+            UserProfileScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
+        }
         composable(Routes.Home.route) {
             HomeScreen(navController)
         }
@@ -73,9 +81,6 @@ fun NavGraph(
         }
         composable(Routes.AddTransaction.route) {          // ✅ was missing
             AddTransactionScreen(navController)
-        }
-        composable(Routes.UserProfile.route) {
-            UserProfileScreen(navController)
         }
         composable(Routes.UserDetailForm.route) {
             UserDetailFormScreen(navController)

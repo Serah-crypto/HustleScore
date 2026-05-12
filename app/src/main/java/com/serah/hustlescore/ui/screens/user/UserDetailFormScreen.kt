@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -21,18 +22,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController           // ✅ NavController not NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.serah.hustlescore.models.UserProfile
+import com.serah.hustlescore.navigation.Routes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import androidx.compose.ui.draw.clip
-import com.serah.hustlescore.models.UserProfile
-
-
-// ─── Counties List ─────────────────────────────────────────────────────────────
 
 val KenyaCounties = listOf(
     "Nairobi", "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta",
@@ -45,44 +44,38 @@ val KenyaCounties = listOf(
     "Nandi Hills", "Nyahururu"
 )
 
-// ─── ViewModel ────────────────────────────────────────────────────────────────
-
 class UserDetailFormViewModel : ViewModel() {
 
-    private val db = FirebaseDatabase.getInstance().reference
+    private val db   = FirebaseDatabase.getInstance().reference
     private val auth = FirebaseAuth.getInstance()
 
-    // Form fields
-    var fullName by mutableStateOf("")
-    var phone by mutableStateOf("")
-    var idNumber by mutableStateOf("")
+    var fullName      by mutableStateOf("")
+    var phone         by mutableStateOf("")
+    var idNumber      by mutableStateOf("")
     var selectedCounty by mutableStateOf("")
-    var occupation by mutableStateOf("")
-    var employer by mutableStateOf("")
+    var occupation    by mutableStateOf("")
+    var employer      by mutableStateOf("")
     var monthlyIncome by mutableStateOf("")
-    var bio by mutableStateOf("")
+    var bio           by mutableStateOf("")
 
-    // Field errors
-    var fullNameError by mutableStateOf<String?>(null)
-    var phoneError by mutableStateOf<String?>(null)
-    var idNumberError by mutableStateOf<String?>(null)
-    var countyError by mutableStateOf<String?>(null)
+    var fullNameError  by mutableStateOf<String?>(null)
+    var phoneError     by mutableStateOf<String?>(null)
+    var idNumberError  by mutableStateOf<String?>(null)
+    var countyError    by mutableStateOf<String?>(null)
     var occupationError by mutableStateOf<String?>(null)
-    var incomeError by mutableStateOf<String?>(null)
+    var incomeError    by mutableStateOf<String?>(null)
 
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val saveState: StateFlow<SaveState> = _saveState
 
     sealed class SaveState {
-        object Idle : SaveState()
+        object Idle    : SaveState()
         object Loading : SaveState()
         object Success : SaveState()
         data class Error(val message: String) : SaveState()
     }
 
-    init {
-        loadExistingProfile()
-    }
+    init { loadExistingProfile() }
 
     private fun loadExistingProfile() {
         val uid = auth.currentUser?.uid ?: return
@@ -90,14 +83,14 @@ class UserDetailFormViewModel : ViewModel() {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val p = snapshot.getValue(UserProfile::class.java) ?: return
-                    fullName = p.fullName
-                    phone = p.phone
-                    idNumber = p.idNumber
+                    fullName       = p.fullName
+                    phone          = p.phone
+                    idNumber       = p.idNumber
                     selectedCounty = p.county
-                    occupation = p.occupation
-                    employer = p.employer
-                    monthlyIncome = p.monthlyIncome
-                    bio = p.bio
+                    occupation     = p.occupation
+                    employer       = p.employer
+                    monthlyIncome  = p.monthlyIncome
+                    bio            = p.bio
                 }
                 override fun onCancelled(error: DatabaseError) {}
             })
@@ -105,12 +98,12 @@ class UserDetailFormViewModel : ViewModel() {
 
     private fun validate(): Boolean {
         var valid = true
-        fullNameError = if (fullName.trim().length < 3) { valid = false; "Enter your full name (min 3 chars)" } else null
-        phoneError = if (!phone.matches(Regex("^[0-9]{10,12}$"))) { valid = false; "Enter a valid phone number" } else null
-        idNumberError = if (idNumber.trim().length < 6) { valid = false; "Enter a valid ID number" } else null
-        countyError = if (selectedCounty.isBlank()) { valid = false; "Please select a county" } else null
-        occupationError = if (occupation.trim().isBlank()) { valid = false; "Enter your occupation" } else null
-        incomeError = if (monthlyIncome.trim().isBlank() || monthlyIncome.toDoubleOrNull() == null) {
+        fullNameError   = if (fullName.trim().length < 3)    { valid = false; "Enter your full name (min 3 chars)" } else null
+        phoneError      = if (!phone.matches(Regex("^[0-9]{10,12}$"))) { valid = false; "Enter a valid phone number" } else null
+        idNumberError   = if (idNumber.trim().length < 6)    { valid = false; "Enter a valid ID number" } else null
+        countyError     = if (selectedCounty.isBlank())      { valid = false; "Please select a county" } else null
+        occupationError = if (occupation.trim().isBlank())   { valid = false; "Enter your occupation" } else null
+        incomeError     = if (monthlyIncome.trim().isBlank() || monthlyIncome.toDoubleOrNull() == null) {
             valid = false; "Enter a valid income amount"
         } else null
         return valid
@@ -122,23 +115,20 @@ class UserDetailFormViewModel : ViewModel() {
             _saveState.value = SaveState.Error("User not authenticated")
             return
         }
-
         _saveState.value = SaveState.Loading
-
         val profileData = mapOf(
-            "uid" to uid,
-            "fullName" to fullName.trim(),
-            "email" to (auth.currentUser?.email ?: ""),
-            "phone" to phone.trim(),
-            "idNumber" to idNumber.trim(),
-            "county" to selectedCounty,
-            "occupation" to occupation.trim(),
-            "employer" to employer.trim(),
-            "monthlyIncome" to monthlyIncome.trim(),
-            "bio" to bio.trim(),
+            "uid"             to uid,
+            "fullName"        to fullName.trim(),
+            "email"           to (auth.currentUser?.email ?: ""),
+            "phone"           to phone.trim(),
+            "idNumber"        to idNumber.trim(),
+            "county"          to selectedCounty,
+            "occupation"      to occupation.trim(),
+            "employer"        to employer.trim(),
+            "monthlyIncome"   to monthlyIncome.trim(),
+            "bio"             to bio.trim(),
             "profileComplete" to true
         )
-
         db.child("users").child(uid).child("profile")
             .setValue(profileData)
             .addOnSuccessListener { _saveState.value = SaveState.Success }
@@ -148,29 +138,26 @@ class UserDetailFormViewModel : ViewModel() {
     fun resetSaveState() { _saveState.value = SaveState.Idle }
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserDetailFormScreen(
-    NavController: androidx.navigation.NavHostController,
+    navController: NavController,                // ✅ Changed from NavHostController → NavController
     formViewModel: UserDetailFormViewModel = viewModel()
 ) {
     val saveState by formViewModel.saveState.collectAsState()
     var countyDropdownExpanded by remember { mutableStateOf(false) }
 
     val primaryGreen = Color(0xFF00C853)
-    val darkBg = Color(0xFF0D1117)
-    val cardBg = Color(0xFF161B22)
-    val mutedText = Color(0xFF8B949E)
+    val darkBg       = Color(0xFF0D1117)
+    val mutedText    = Color(0xFF8B949E)
 
-    // Navigate back on success
     LaunchedEffect(saveState) {
         if (saveState is UserDetailFormViewModel.SaveState.Success) {
             kotlinx.coroutines.delay(1200)
             formViewModel.resetSaveState()
-            NavController.navigate("profile") {
-                popUpTo("user_detail_form") { inclusive = true }
+            // ✅ Use Routes constant instead of hardcoded string
+            navController.navigate(Routes.UserProfile.route) {
+                popUpTo(Routes.UserDetailForm.route) { inclusive = true }
             }
         }
     }
@@ -178,9 +165,11 @@ fun UserDetailFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Complete Your Profile", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = {
+                    Text("Complete Your Profile", color = Color.White, fontWeight = FontWeight.Bold)
+                },
                 navigationIcon = {
-                    IconButton(onClick = { NavController.popBackStack() }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Back", tint = Color.White)
                     }
                 },
@@ -191,7 +180,6 @@ fun UserDetailFormScreen(
     ) { padding ->
 
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -200,16 +188,23 @@ fun UserDetailFormScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
 
-                // ── Header Banner ────────────────────────────────────────
+                // Header banner
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF003D1F), Color(0xFF00C853).copy(0.3f))))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFF003D1F), Color(0xFF00C853).copy(alpha = 0.3f))
+                            )
+                        )
                         .padding(16.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = primaryGreen, modifier = Modifier.size(40.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(Icons.Default.AccountCircle, null, tint = primaryGreen, modifier = Modifier.size(40.dp))
                         Column {
                             Text("Build Your Profile", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text("Your info helps us calculate your HustleScore", color = mutedText, fontSize = 12.sp)
@@ -217,39 +212,20 @@ fun UserDetailFormScreen(
                     }
                 }
 
-                // ── Section: Personal ────────────────────────────────────
-                FormSectionHeader(title = "Personal Details", icon = Icons.Default.Person)
+                FormSectionHeader("Personal Details", Icons.Default.Person)
 
-                FormField(
-                    value = formViewModel.fullName,
-                    onValueChange = { formViewModel.fullName = it },
-                    label = "Full Name",
-                    placeholder = "e.g. Jane Wanjiku",
-                    icon = Icons.Default.Badge,
-                    error = formViewModel.fullNameError
-                )
+                FormField(formViewModel.fullName, { formViewModel.fullName = it },
+                    "Full Name", "e.g. Jane Wanjiku", Icons.Default.Badge, error = formViewModel.fullNameError)
 
-                FormField(
-                    value = formViewModel.phone,
-                    onValueChange = { formViewModel.phone = it },
-                    label = "Phone Number",
-                    placeholder = "e.g. 0712345678",
-                    icon = Icons.Default.Phone,
-                    keyboardType = KeyboardType.Phone,
-                    error = formViewModel.phoneError
-                )
+                FormField(formViewModel.phone, { formViewModel.phone = it },
+                    "Phone Number", "e.g. 0712345678", Icons.Default.Phone,
+                    KeyboardType.Phone, formViewModel.phoneError)
 
-                FormField(
-                    value = formViewModel.idNumber,
-                    onValueChange = { formViewModel.idNumber = it },
-                    label = "National ID Number",
-                    placeholder = "e.g. 12345678",
-                    icon = Icons.Default.CreditCard,
-                    keyboardType = KeyboardType.Number,
-                    error = formViewModel.idNumberError
-                )
+                FormField(formViewModel.idNumber, { formViewModel.idNumber = it },
+                    "National ID Number", "e.g. 12345678", Icons.Default.CreditCard,
+                    KeyboardType.Number, formViewModel.idNumberError)
 
-                // County Dropdown
+                // County dropdown
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("County", color = mutedText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     ExposedDropdownMenuBox(
@@ -261,9 +237,13 @@ fun UserDetailFormScreen(
                             onValueChange = {},
                             readOnly = true,
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countyDropdownExpanded) },
-                            leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null, tint = if (formViewModel.countyError != null) Color(0xFFFF5252) else mutedText) },
+                            leadingIcon = {
+                                Icon(Icons.Default.LocationOn, null,
+                                    tint = if (formViewModel.countyError != null) Color(0xFFFF5252) else mutedText)
+                            },
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
+                            isError = formViewModel.countyError != null,
                             colors = OutlinedTextFieldDefaults.colors(
                                 unfocusedBorderColor = if (formViewModel.countyError != null) Color(0xFFFF5252) else Color(0xFF30363D),
                                 focusedBorderColor = primaryGreen,
@@ -272,8 +252,7 @@ fun UserDetailFormScreen(
                                 cursorColor = primaryGreen,
                                 unfocusedContainerColor = Color(0xFF161B22),
                                 focusedContainerColor = Color(0xFF161B22)
-                            ),
-                            isError = formViewModel.countyError != null
+                            )
                         )
                         ExposedDropdownMenu(
                             expanded = countyDropdownExpanded,
@@ -297,40 +276,22 @@ fun UserDetailFormScreen(
                     }
                 }
 
-                // ── Section: Financial ────────────────────────────────────
                 Spacer(Modifier.height(4.dp))
-                FormSectionHeader(title = "Financial Information", icon = Icons.Default.AccountBalance)
+                FormSectionHeader("Financial Information", Icons.Default.AccountBalance)
 
-                FormField(
-                    value = formViewModel.occupation,
-                    onValueChange = { formViewModel.occupation = it },
-                    label = "Occupation",
-                    placeholder = "e.g. Software Engineer",
-                    icon = Icons.Default.Work,
-                    error = formViewModel.occupationError
-                )
+                FormField(formViewModel.occupation, { formViewModel.occupation = it },
+                    "Occupation", "e.g. Software Engineer", Icons.Default.Work,
+                    error = formViewModel.occupationError)
 
-                FormField(
-                    value = formViewModel.employer,
-                    onValueChange = { formViewModel.employer = it },
-                    label = "Employer / Business Name",
-                    placeholder = "e.g. Safaricom PLC",
-                    icon = Icons.Default.Business
-                )
+                FormField(formViewModel.employer, { formViewModel.employer = it },
+                    "Employer / Business Name", "e.g. Safaricom PLC", Icons.Default.Business)
 
-                FormField(
-                    value = formViewModel.monthlyIncome,
-                    onValueChange = { formViewModel.monthlyIncome = it },
-                    label = "Monthly Income (KES)",
-                    placeholder = "e.g. 45000",
-                    icon = Icons.Default.AttachMoney,
-                    keyboardType = KeyboardType.Number,
-                    error = formViewModel.incomeError
-                )
+                FormField(formViewModel.monthlyIncome, { formViewModel.monthlyIncome = it },
+                    "Monthly Income (KES)", "e.g. 45000", Icons.Default.AttachMoney,
+                    KeyboardType.Number, formViewModel.incomeError)
 
-                // ── Section: Bio ──────────────────────────────────────────
                 Spacer(Modifier.height(4.dp))
-                FormSectionHeader(title = "About You (Optional)", icon = Icons.Default.Info)
+                FormSectionHeader("About You (Optional)", Icons.Default.Info)
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Short Bio", color = mutedText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
@@ -350,32 +311,35 @@ fun UserDetailFormScreen(
                             unfocusedContainerColor = Color(0xFF161B22),
                             focusedContainerColor = Color(0xFF161B22)
                         ),
-                        supportingText = { Text("${formViewModel.bio.length}/300", color = mutedText, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.End) }
+                        supportingText = {
+                            Text("${formViewModel.bio.length}/300", color = mutedText,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                        }
                     )
                 }
 
-                // ── Submit Button ─────────────────────────────────────────
                 Spacer(Modifier.height(8.dp))
 
                 AnimatedContent(targetState = saveState, label = "save_btn") { state ->
                     when (state) {
                         is UserDetailFormViewModel.SaveState.Loading -> {
-                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(color = primaryGreen, strokeWidth = 3.dp)
                             }
                         }
                         is UserDetailFormViewModel.SaveState.Success -> {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF003D1F)),
+                                colors = CardDefaults.cardColors(Color(0xFF003D1F)),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                    Modifier.padding(16.dp).fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = primaryGreen)
+                                    Icon(Icons.Default.CheckCircle, null, tint = primaryGreen)
                                     Spacer(Modifier.width(8.dp))
                                     Text("Profile saved! Redirecting...", color = primaryGreen, fontWeight = FontWeight.SemiBold)
                                 }
@@ -383,13 +347,9 @@ fun UserDetailFormScreen(
                         }
                         is UserDetailFormViewModel.SaveState.Error -> {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF3D0000)),
-                                    shape = RoundedCornerShape(14.dp)
-                                ) {
-                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Error, contentDescription = null, tint = Color(0xFFFF5252))
+                                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(Color(0xFF3D0000)), shape = RoundedCornerShape(14.dp)) {
+                                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Error, null, tint = Color(0xFFFF5252))
                                         Spacer(Modifier.width(8.dp))
                                         Text(state.message, color = Color(0xFFFF5252), fontSize = 13.sp)
                                     }
@@ -399,9 +359,7 @@ fun UserDetailFormScreen(
                                     modifier = Modifier.fillMaxWidth().height(52.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = primaryGreen),
                                     shape = RoundedCornerShape(14.dp)
-                                ) {
-                                    Text("Try Again", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                }
+                                ) { Text("Try Again", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                             }
                         }
                         else -> {
@@ -411,7 +369,7 @@ fun UserDetailFormScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = primaryGreen),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
-                                Icon(Icons.Default.Save, contentDescription = null)
+                                Icon(Icons.Default.Save, null)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Save Profile", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
@@ -425,8 +383,6 @@ fun UserDetailFormScreen(
     }
 }
 
-// ─── Reusable Form Components ─────────────────────────────────────────────────
-
 @Composable
 private fun FormSectionHeader(title: String, icon: ImageVector) {
     Row(
@@ -434,7 +390,7 @@ private fun FormSectionHeader(title: String, icon: ImageVector) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Icon(icon, contentDescription = null, tint = Color(0xFF00C853), modifier = Modifier.size(18.dp))
+        Icon(icon, null, tint = Color(0xFF00C853), modifier = Modifier.size(18.dp))
         Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Spacer(Modifier.weight(1f))
         Divider(modifier = Modifier.weight(2f), color = Color(0xFF30363D))
@@ -452,7 +408,7 @@ private fun FormField(
     error: String? = null
 ) {
     val primaryGreen = Color(0xFF00C853)
-    val mutedText = Color(0xFF8B949E)
+    val mutedText    = Color(0xFF8B949E)
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(label, color = mutedText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
@@ -461,7 +417,9 @@ private fun FormField(
             onValueChange = onValueChange,
             placeholder = { Text(placeholder, color = mutedText) },
             leadingIcon = {
-                Icon(icon, contentDescription = null, tint = if (error != null) Color(0xFFFF5252) else mutedText, modifier = Modifier.size(20.dp))
+                Icon(icon, null,
+                    tint = if (error != null) Color(0xFFFF5252) else mutedText,
+                    modifier = Modifier.size(20.dp))
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
@@ -470,15 +428,15 @@ private fun FormField(
             isError = error != null,
             supportingText = error?.let { { Text(it, color = Color(0xFFFF5252), fontSize = 11.sp) } },
             colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = if (error != null) Color(0xFFFF5252) else Color(0xFF30363D),
-                focusedBorderColor = primaryGreen,
-                errorBorderColor = Color(0xFFFF5252),
-                unfocusedTextColor = Color(0xFFCDD9E5),
-                focusedTextColor = Color.White,
-                cursorColor = primaryGreen,
+                unfocusedBorderColor  = if (error != null) Color(0xFFFF5252) else Color(0xFF30363D),
+                focusedBorderColor    = primaryGreen,
+                errorBorderColor      = Color(0xFFFF5252),
+                unfocusedTextColor    = Color(0xFFCDD9E5),
+                focusedTextColor      = Color.White,
+                cursorColor           = primaryGreen,
                 unfocusedContainerColor = Color(0xFF161B22),
-                focusedContainerColor = Color(0xFF161B22),
-                errorContainerColor = Color(0xFF161B22)
+                focusedContainerColor   = Color(0xFF161B22),
+                errorContainerColor     = Color(0xFF161B22)
             )
         )
     }

@@ -1,5 +1,6 @@
 package com.hustlescore.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -48,12 +49,20 @@ fun getScoreColor(score: Int): Color = when {
     score >= 350 -> ScoreFair
     else         -> ScorePoor
 }
-
 @Composable
-fun HustleScoreTheme(content: @Composable () -> Unit) {
+fun HustleScoreTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(), // This should now come from your ViewModel
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) {
+        DarkColorScheme // Define your dark colors here
+    } else {
+        LightColorScheme // Define your light colors here
+    }
+
     MaterialTheme(
-        colorScheme = LightColorScheme,
-        typography = HustleTypography,
+        colorScheme = colorScheme,
+        typography = Typography,
         content = content
     )
 }

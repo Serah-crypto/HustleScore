@@ -1,6 +1,5 @@
 package com.serah.hustlescore.navigation
 
-import android.R.attr.type
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -25,94 +24,56 @@ import com.serah.hustlescore.ui.screens.user.DashboardScreen
 import com.serah.hustlescore.ui.screens.user.FinancialAdviceScreen
 import com.serah.hustlescore.ui.screens.user.HomeScreen
 import com.serah.hustlescore.ui.screens.user.NotificationsScreen
-import com.serah.hustlescore.ui.screens.user.UserProfileScreen
 import com.serah.hustlescore.ui.screens.user.UploadSMSScreen
+import com.serah.hustlescore.ui.screens.user.UserDetailFormScreen
+import com.serah.hustlescore.ui.screens.user.UserProfileScreen
+import com.serah.hustlescore.ui.theme.ThemeViewModel
 
 @Composable
 fun AppNavHost(
-    modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
-    startDestination: String = Routes.Register.route
+    modifier         : Modifier         = Modifier,
+    navController    : NavHostController = rememberNavController(),
+    startDestination : String            = Routes.Register.route,
+    themeViewModel   : ThemeViewModel                            // ✅ passed from MainActivity
 ) {
     NavHost(
-        navController = navController,
+        navController    = navController,
         startDestination = startDestination,
-        modifier = modifier
+        modifier         = modifier
     ) {
-        // ── Auth ───────────────────────────────────────────────────────────
-        composable(Routes.Login.route) {
-            LoginScreen(navController)
-        }
-        composable(Routes.Register.route) {
-            RegisterScreen(navController)
-        }
-        composable(Routes.ForgotPassword.route) {
-            ForgotPasswordScreen(navController)
-        }
-        composable(Routes.SplashScreen.route) {
-            SplashScreen(navController)
-        }
+        composable(Routes.Login.route)          { LoginScreen(navController) }
+        composable(Routes.Register.route)       { RegisterScreen(navController) }
+        composable(Routes.ForgotPassword.route) { ForgotPasswordScreen(navController) }
+        composable(Routes.SplashScreen.route)   { SplashScreen(navController) }
 
-        // ── User ───────────────────────────────────────────────────────────
-        composable(Routes.Home.route) {
-            HomeScreen(navController)
-        }
-        composable(Routes.UserDashboard.route) {
-            DashboardScreen(navController)
-        }
-        composable(Routes.CreditReport.route) {
-            CreditReportScreen(navController)
-        }
-        composable(Routes.FinancialAdvice.route) {
-            FinancialAdviceScreen(navController)
-        }
-        composable(Routes.Notifications.route) {
-            NotificationsScreen(navController)
-        }
+        composable(Routes.Home.route)            { HomeScreen(navController) }
+        composable(Routes.UserDashboard.route)   { DashboardScreen(navController) }
+        composable(Routes.CreditReport.route)    { CreditReportScreen(navController) }
+        composable(Routes.FinancialAdvice.route) { FinancialAdviceScreen(navController) }
+        composable(Routes.Notifications.route)   { NotificationsScreen(navController) }
+        composable(Routes.ScoreBreakdown.route)  { ScoreBreakdownScreen(navController) }
+        composable(Routes.UploadSms.route)       { UploadSMSScreen(navController) }
+        composable(Routes.AddTransaction.route)  { AddTransactionScreen(navController) }
+
+        // ✅ UserProfileScreen receives themeViewModel so it can show the toggle
         composable(Routes.UserProfile.route) {
-            UserProfileScreen(navController)
+            UserProfileScreen(navController = navController, themeViewModel = themeViewModel)
         }
-        composable(Routes.ScoreBreakdown.route) {
-            ScoreBreakdownScreen(navController)
-        }
-        composable(Routes.UploadSms.route) {
-            UploadSMSScreen(navController)
-        }
-        composable(Routes.AddTransaction.route) {
-            AddTransactionScreen(navController)
+        composable(Routes.UserDetailForm.route) {
+            UserDetailFormScreen(navController)
         }
 
-        // ── Admin ──────────────────────────────────────────────────────────
-        composable(Routes.AdminDashboard.route) {
-            AdminDashboardScreen(navController)
-        }
-        composable(Routes.AlgorithmWeight.route) {
-            AlgorithmWeightScreen(navController)
-        }
-        composable(Routes.ScoringLogs.route) {
-            ScoringLogsScreen(navController)
-        }
-        composable(Routes.UsersList.route) {
-            UsersListScreen(navController)
-        }
+        composable(Routes.AdminDashboard.route)  { AdminDashboardScreen(navController) }
+        composable(Routes.AlgorithmWeight.route) { AlgorithmWeightScreen(navController) }
+        composable(Routes.ScoringLogs.route)     { ScoringLogsScreen(navController) }
+        composable(Routes.UsersList.route)       { UsersListScreen(navController) }
 
-        // ── Parameterized ──────────────────────────────────────────────────
         composable(
-            route = Routes.UserDetail.route,
-            arguments = listOf(
-                navArgument(Routes.UserDetail.ARG_USER_ID) {
-                    type = NavType.StringType
-                }
-            )
+            route     = Routes.UserDetail.route,
+            arguments = listOf(navArgument(Routes.UserDetail.ARG_USER_ID) { type = NavType.StringType })
         ) { backStackEntry ->
-            val userId = backStackEntry.arguments
-                ?.getString(Routes.UserDetail.ARG_USER_ID)
-                ?: return@composable
-            UserDetailScreen(
-                navController = navController,
-                userId = userId
-            )
+            val userId = backStackEntry.arguments?.getString(Routes.UserDetail.ARG_USER_ID) ?: return@composable
+            UserDetailScreen(navController = navController, userId = userId)
         }
     }
 }
-
