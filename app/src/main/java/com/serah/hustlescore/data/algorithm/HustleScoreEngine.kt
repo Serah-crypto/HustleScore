@@ -1,6 +1,5 @@
 package com.serah.hustlescore.data.algorithm
 
-
 import com.serah.hustlescore.models.AlgorithmWeights
 import com.serah.hustlescore.models.FinancialAdvice
 import com.serah.hustlescore.models.HustleScore
@@ -14,19 +13,27 @@ import androidx.compose.ui.graphics.Color
 
 object HustleScoreEngine {
 
+    // ── Known savings/financial institutions ──────────────────────────────────
+    private val savingsKeywords = listOf(
+        "m-shwari", "mshwari", "kcb mpesa", "kcb m-pesa", "fuliza",
+        "co-op", "equity", "stanbic", "absa", "ncba loop", "faulu",
+        "sacco", "savings", "deposit", "fixed deposit", "investment"
+    )
 
+    private val loanKeywords = listOf(
+        "fuliza", "m-shwari loan", "kcb loan", "tala", "branch",
+        "zenka", "haraka", "okolea", "utunzaji", "loan disbursed",
+        "you have been given", "loan of ksh"
+    )
 
-
-
-        fun getScoreColor(score: Int): Color {
-            return when (score) {
-                in 0..300 -> Color.Red
-                in 301..600 -> Color.Yellow
-                in 601..1000 -> Color.Green
-                else -> Color.Gray
-            }
+    fun getScoreColor(score: Int): Color {
+        return when (score) {
+            in 0..300 -> Color.Red
+            in 301..600 -> Color.Yellow
+            in 601..1000 -> Color.Green
+            else -> Color.Gray
         }
-
+    }
 
     fun calculate(
         transactions: List<Transaction>,
@@ -34,25 +41,24 @@ object HustleScoreEngine {
     ): HustleScore {
         if (transactions.isEmpty()) return HustleScore()
 
-
-        val income = transactions.filter { it.type == TransactionType.INCOME }
+        val income   = transactions.filter { it.type == TransactionType.INCOME }
         val expenses = transactions.filter { it.type == TransactionType.EXPENSE }
-        val savings = transactions.filter { it.type == TransactionType.SAVINGS }
-        val loans = transactions.filter { it.type == TransactionType.LOAN_REPAYMENT }
+        val savings  = transactions.filter { it.type == TransactionType.SAVINGS }
+        val loans    = transactions.filter { it.type == TransactionType.LOAN_REPAYMENT }
 
-        val totalIncome = income.sumOf { it.amount }
-        val totalExpenses = expenses.sumOf { it.amount }
-        val totalSavings = savings.sumOf { it.amount }
-        val totalLoanRepaid = loans.sumOf { it.amount }
+        val totalIncome      = income.sumOf { it.amount }
+        val totalExpenses    = expenses.sumOf { it.amount }
+        val totalSavings     = savings.sumOf { it.amount }
+        val totalLoanRepaid  = loans.sumOf { it.amount }
 
         // 1. Income Stability Score
         val monthlyIncome = groupByMonth(income)
-        val incomeValues = monthlyIncome.values.map { list -> list.sumOf { it.amount } }
-        val avgIncome = if (incomeValues.isNotEmpty()) incomeValues.average() else 0.0
-        val variance = if (incomeValues.size > 1)
+        val incomeValues  = monthlyIncome.values.map { list -> list.sumOf { it.amount } }
+        val avgIncome     = if (incomeValues.isNotEmpty()) incomeValues.average() else 0.0
+        val variance      = if (incomeValues.size > 1)
             sqrt(incomeValues.map { (it - avgIncome).pow(2.0) }.average()) else 0.0
-        val consistency = if (avgIncome > 0) max(0.0, 1.0 - (variance / avgIncome)) else 0.0
-        val incomeScore = min(1000.0, (consistency * 600) + (min(totalIncome / 50000, 1.0) * 400))
+        val consistency   = if (avgIncome > 0) max(0.0, 1.0 - (variance / avgIncome)) else 0.0
+        val incomeScore   = min(1000.0, (consistency * 600) + (min(totalIncome / 50000, 1.0) * 400))
 
         // 2. Savings Score
         val savingsRatio = if (totalIncome > 0) totalSavings / totalIncome else 0.0
@@ -63,8 +69,8 @@ object HustleScoreEngine {
         val expenseScore = min(1000.0, max(0.0, (1 - expenseRatio) * 1250))
 
         // 4. Transaction Activity Score
-        val allMonths = groupByMonth(transactions)
-        val txPerMonth = transactions.size.toDouble() / max(1, allMonths.size)
+        val allMonths    = groupByMonth(transactions)
+        val txPerMonth   = transactions.size.toDouble() / max(1, allMonths.size)
         val activityScore = min(1000.0, txPerMonth * 50)
 
         // 5. Debt Behavior Score
@@ -72,104 +78,270 @@ object HustleScoreEngine {
             min(1000.0, (totalLoanRepaid / max(totalExpenses * 0.2, 1.0)) * 500)
         else 500.0
 
-        val total = (incomeScore * weights.incomeWeight +
-                savingsScore * weights.savingsWeight +
-                expenseScore * weights.expenseWeight +
+        val total = (incomeScore  * weights.incomeWeight  +
+                savingsScore * weights.savingsWeight  +
+                expenseScore * weights.expenseWeight  +
                 activityScore * weights.activityWeight +
-                debtScore * weights.debtWeight).roundToInt().coerceIn(0, 1000)
+                debtScore    * weights.debtWeight
+                ).roundToInt().coerceIn(0, 1000)
 
         val grade = when {
             total >= 750 -> ScoreGrade.EXCELLENT
             total >= 550 -> ScoreGrade.GOOD
             total >= 350 -> ScoreGrade.FAIR
-            else -> ScoreGrade.POOR
+            else         -> ScoreGrade.POOR
         }
 
         return HustleScore(
-            totalScore = total,
-            incomeScore = incomeScore.roundToInt(),
-            savingsScore = savingsScore.roundToInt(),
-            expenseScore = expenseScore.roundToInt(),
+            totalScore    = total,
+            incomeScore   = incomeScore.roundToInt(),
+            savingsScore  = savingsScore.roundToInt(),
+            expenseScore  = expenseScore.roundToInt(),
             activityScore = activityScore.roundToInt(),
-            debtScore = debtScore.roundToInt(),
-            grade = grade,
-            totalIncome = totalIncome,
+            debtScore     = debtScore.roundToInt(),
+            grade         = grade,
+            totalIncome   = totalIncome,
             totalExpenses = totalExpenses,
-            totalSavings = totalSavings
+            totalSavings  = totalSavings
         )
     }
 
+    // ── SMS Parser ────────────────────────────────────────────────────────────
     fun parseMpesaSms(smsText: String): List<Transaction> {
         val transactions = mutableListOf<Transaction>()
         val lines = smsText.split("\n").filter { it.isNotBlank() }
 
-        val receivedPattern = Regex("""([A-Z0-9]+) Confirmed\. You have received Ksh([\d,]+\.?\d*) from (.+?) on (\d+/\d+/\d+)""", RegexOption.IGNORE_CASE)
-        val sentPattern = Regex("""([A-Z0-9]+) Confirmed\. Ksh([\d,]+\.?\d*) sent to (.+?) on (\d+/\d+/\d+)""", RegexOption.IGNORE_CASE)
-        val paybillPattern = Regex("""([A-Z0-9]+) Confirmed\. Ksh([\d,]+\.?\d*) paid to (.+?) on (\d+/\d+/\d+)""", RegexOption.IGNORE_CASE)
-        val depositPattern = Regex("""([A-Z0-9]+) Confirmed\. Ksh([\d,]+\.?\d*) deposited to (.+?) on (\d+/\d+/\d+)""", RegexOption.IGNORE_CASE)
-        val loanPattern = Regex("""([A-Z0-9]+) Confirmed\. Ksh([\d,]+\.?\d*) loan repayment to (.+?) on (\d+/\d+/\d+)""", RegexOption.IGNORE_CASE)
+        // ✅ Income: received from someone
+        val receivedPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+You have received Ksh([\d,]+\.?\d*) from (.+?) on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
+        // ✅ Loan received: given a loan / disbursed
+        val loanReceivedPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+.{0,30}Ksh([\d,]+\.?\d*).{0,30}(loan|disbursed|given).{0,60}on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
+        // ✅ Sent to someone (could be expense OR savings transfer)
+        val sentPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+Ksh([\d,]+\.?\d*) sent to (.+?) on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
+        // ✅ Paid to paybill (could be expense OR savings e.g. M-Shwari)
+        val paybillPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+Ksh([\d,]+\.?\d*) paid to (.+?) on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
+        // ✅ Deposited to (usually savings)
+        val depositPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+Ksh([\d,]+\.?\d*) deposited to (.+?) on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
+        // ✅ Transferred to (savings/financial service)
+        val transferPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+Ksh([\d,]+\.?\d*) transferred to (.+?) on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
+        // ✅ Loan repayment
+        val loanRepayPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+Ksh([\d,]+\.?\d*) loan repayment to (.+?) on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
+        // ✅ Withdrawal
+        val withdrawPattern = Regex(
+            """([A-Z0-9]+) Confirmed[.\s]+Ksh([\d,]+\.?\d*) withdrawn from (.+?) on (\d+/\d+/\d+)""",
+            RegexOption.IGNORE_CASE
+        )
 
         for (line in lines) {
-            val (match, type) = listOf(
-                receivedPattern.find(line) to TransactionType.INCOME,
-                depositPattern.find(line) to TransactionType.SAVINGS,
-                loanPattern.find(line) to TransactionType.LOAN_REPAYMENT,
-                sentPattern.find(line) to TransactionType.EXPENSE,
-                paybillPattern.find(line) to TransactionType.EXPENSE,
-            ).firstOrNull { it.first != null } ?: continue
+            val lineLower = line.lowercase()
 
-            match ?: continue
-            val amount = match.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
-            val desc = match.groupValues[3]
-            val rawDate = match.groupValues[4]
-            val parts = rawDate.split("/")
-            val isoDate = if (parts.size == 3) "${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}" else ""
+            // Check loan received first (before generic received)
+            val loanReceived = loanReceivedPattern.find(line)
+            if (loanReceived != null) {
+                val amount = loanReceived.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                val desc   = loanReceived.groupValues[3]
+                transactions.add(Transaction(
+                    id = loanReceived.groupValues[1],
+                    type = TransactionType.LOAN_RECEIVED,   // ✅ new type
+                    amount = amount,
+                    description = "Loan received - $desc",
+                    date = parseDate(loanReceived.groupValues[4]),
+                    mpesaRef = loanReceived.groupValues[1],
+                    rawSms = line,
+                    category = "loan"
+                ))
+                continue
+            }
 
-            transactions.add(Transaction(
-                id = match.groupValues[1],
-                type = type,
-                amount = amount,
-                description = desc,
-                date = isoDate,
-                mpesaRef = match.groupValues[1],
-                rawSms = line,
-                category = detectCategory(desc, type)
-            ))
+            // Income: received from person/employer
+            val received = receivedPattern.find(line)
+            if (received != null) {
+                val amount = received.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                transactions.add(Transaction(
+                    id = received.groupValues[1],
+                    type = TransactionType.INCOME,
+                    amount = amount,
+                    description = received.groupValues[3],
+                    date = parseDate(received.groupValues[4]),
+                    mpesaRef = received.groupValues[1],
+                    rawSms = line,
+                    category = detectCategory(received.groupValues[3], TransactionType.INCOME)
+                ))
+                continue
+            }
+
+            // Deposit → always savings
+            val deposit = depositPattern.find(line)
+            if (deposit != null) {
+                val amount = deposit.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                transactions.add(Transaction(
+                    id = deposit.groupValues[1],
+                    type = TransactionType.SAVINGS,
+                    amount = amount,
+                    description = deposit.groupValues[3],
+                    date = parseDate(deposit.groupValues[4]),
+                    mpesaRef = deposit.groupValues[1],
+                    rawSms = line,
+                    category = "savings"
+                ))
+                continue
+            }
+
+            // Transfer → savings if going to financial institution
+            val transfer = transferPattern.find(line)
+            if (transfer != null) {
+                val amount = transfer.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                val desc   = transfer.groupValues[3]
+                val type   = if (isSavingsDestination(desc)) TransactionType.SAVINGS else TransactionType.EXPENSE
+                transactions.add(Transaction(
+                    id = transfer.groupValues[1],
+                    type = type,
+                    amount = amount,
+                    description = desc,
+                    date = parseDate(transfer.groupValues[4]),
+                    mpesaRef = transfer.groupValues[1],
+                    rawSms = line,
+                    category = detectCategory(desc, type)
+                ))
+                continue
+            }
+
+            // Loan repayment
+            val loanRepay = loanRepayPattern.find(line)
+            if (loanRepay != null) {
+                val amount = loanRepay.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                transactions.add(Transaction(
+                    id = loanRepay.groupValues[1],
+                    type = TransactionType.LOAN_REPAYMENT,
+                    amount = amount,
+                    description = loanRepay.groupValues[3],
+                    date = parseDate(loanRepay.groupValues[4]),
+                    mpesaRef = loanRepay.groupValues[1],
+                    rawSms = line,
+                    category = "loan"
+                ))
+                continue
+            }
+
+            // Sent to → savings if going to financial institution, else expense
+            val sent = sentPattern.find(line)
+            if (sent != null) {
+                val amount = sent.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                val desc   = sent.groupValues[3]
+                val type   = if (isSavingsDestination(desc)) TransactionType.SAVINGS else TransactionType.EXPENSE
+                transactions.add(Transaction(
+                    id = sent.groupValues[1],
+                    type = type,
+                    amount = amount,
+                    description = desc,
+                    date = parseDate(sent.groupValues[4]),
+                    mpesaRef = sent.groupValues[1],
+                    rawSms = line,
+                    category = detectCategory(desc, type)
+                ))
+                continue
+            }
+
+            // Paid to → savings if going to financial institution, else expense
+            val paybill = paybillPattern.find(line)
+            if (paybill != null) {
+                val amount = paybill.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                val desc   = paybill.groupValues[3]
+                val type   = if (isSavingsDestination(desc)) TransactionType.SAVINGS else TransactionType.EXPENSE
+                transactions.add(Transaction(
+                    id = paybill.groupValues[1],
+                    type = type,
+                    amount = amount,
+                    description = desc,
+                    date = parseDate(paybill.groupValues[4]),
+                    mpesaRef = paybill.groupValues[1],
+                    rawSms = line,
+                    category = detectCategory(desc, type)
+                ))
+                continue
+            }
+
+            // Withdrawal → expense
+            val withdraw = withdrawPattern.find(line)
+            if (withdraw != null) {
+                val amount = withdraw.groupValues[2].replace(",", "").toDoubleOrNull() ?: continue
+                transactions.add(Transaction(
+                    id = withdraw.groupValues[1],
+                    type = TransactionType.EXPENSE,
+                    amount = amount,
+                    description = "Withdrawal - ${withdraw.groupValues[3]}",
+                    date = parseDate(withdraw.groupValues[4]),
+                    mpesaRef = withdraw.groupValues[1],
+                    rawSms = line,
+                    category = "withdrawal"
+                ))
+                continue
+            }
         }
+
         return transactions
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    // ✅ Checks if destination is a savings/financial institution
+    private fun isSavingsDestination(desc: String): Boolean {
+        val d = desc.lowercase()
+        return savingsKeywords.any { d.contains(it) }
+    }
+
+    private fun parseDate(raw: String): String {
+        val parts = raw.split("/")
+        return if (parts.size == 3)
+            "${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}"
+        else ""
     }
 
     private fun detectCategory(desc: String, type: TransactionType): String {
         val d = desc.lowercase()
         return when {
             d.contains("kplc") || d.contains("power") || d.contains("water") -> "utilities"
-            d.contains("safaricom") || d.contains("airtel") -> "airtime"
-            d.contains("school") || d.contains("college") -> "education"
-            d.contains("hospital") || d.contains("pharmacy") -> "healthcare"
-            d.contains("supermarket") || d.contains("market") -> "food"
-            type == TransactionType.SAVINGS -> "savings"
-            type == TransactionType.LOAN_REPAYMENT -> "loan"
-            else -> "other"
+            d.contains("safaricom") || d.contains("airtel")                   -> "airtime"
+            d.contains("school") || d.contains("college")                     -> "education"
+            d.contains("hospital") || d.contains("pharmacy")                  -> "healthcare"
+            d.contains("supermarket") || d.contains("market")                 -> "food"
+            type == TransactionType.SAVINGS                                    -> "savings"
+            type == TransactionType.LOAN_REPAYMENT                             -> "loan"
+            else                                                               -> "other"
         }
     }
 
-
-
     fun getAdvice(score: HustleScore): List<FinancialAdvice> {
         val advice = mutableListOf<FinancialAdvice>()
-        if (score.incomeScore < 500) advice.add(FinancialAdvice("Diversify Income Streams", "Consider adding a second income source like M-Pesa float, small business, or gig work.", "💰", Priority.HIGH))
-        if (score.savingsScore < 400) advice.add(FinancialAdvice("Start a Savings Habit", "Set aside at least 10-20% of every income using M-Pesa savings or a SACCO.", "🏦", Priority.HIGH))
-        if (score.expenseScore < 400) advice.add(FinancialAdvice("Control Your Expenses", "Track your spending and reduce non-essential expenses.", "📊", Priority.MEDIUM))
+        if (score.incomeScore < 500)  advice.add(FinancialAdvice("Diversify Income Streams",    "Consider adding a second income source like M-Pesa float, small business, or gig work.", "💰", Priority.HIGH))
+        if (score.savingsScore < 400) advice.add(FinancialAdvice("Start a Savings Habit",       "Set aside at least 10-20% of every income using M-Pesa savings or a SACCO.", "🏦", Priority.HIGH))
+        if (score.expenseScore < 400) advice.add(FinancialAdvice("Control Your Expenses",       "Track your spending and reduce non-essential expenses.", "📊", Priority.MEDIUM))
         if (score.activityScore < 400) advice.add(FinancialAdvice("Increase Transaction Activity", "More consistent M-Pesa usage builds a stronger financial profile.", "📱", Priority.MEDIUM))
-        if (score.debtScore < 400) advice.add(FinancialAdvice("Prioritize Loan Repayments", "Consistent repayments significantly boost your credit score.", "✅", Priority.HIGH))
+        if (score.debtScore < 400)    advice.add(FinancialAdvice("Prioritize Loan Repayments",  "Consistent repayments significantly boost your credit score.", "✅", Priority.HIGH))
         advice.add(FinancialAdvice("Join a SACCO", "SACCOs offer affordable loans to members with good savings history.", "🤝", Priority.LOW))
         return advice
     }
 
     private fun groupByMonth(txs: List<Transaction>): Map<String, List<Transaction>> =
         txs.groupBy { it.date.take(7) }
-
-
 }
-
-

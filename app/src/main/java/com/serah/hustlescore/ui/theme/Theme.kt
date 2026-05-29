@@ -2,23 +2,32 @@ package com.hustlescore.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Typography  // ✅ correct
 import com.serah.hustlescore.ui.theme.BorderColor
 import com.serah.hustlescore.ui.theme.CardWhite
 import com.serah.hustlescore.ui.theme.HustleDark
 import com.serah.hustlescore.ui.theme.HustleGold
 import com.serah.hustlescore.ui.theme.HustleGreen
 import com.serah.hustlescore.ui.theme.HustleSurface
+import com.serah.hustlescore.ui.theme.Pink80
+import com.serah.hustlescore.ui.theme.Purple80
+import com.serah.hustlescore.ui.theme.PurpleGrey80
 import com.serah.hustlescore.ui.theme.ScoreExcellent
 import com.serah.hustlescore.ui.theme.ScoreFair
 import com.serah.hustlescore.ui.theme.ScoreGood
 import com.serah.hustlescore.ui.theme.ScorePoor
 import com.serah.hustlescore.ui.theme.TextPrimary
-
+private val DarkColorScheme = darkColorScheme(
+    primary = Purple80,
+    secondary = PurpleGrey80,
+    tertiary = Pink80
+)
 val HustleTypography = Typography(
     headlineLarge = TextStyle(fontWeight = FontWeight.Black, fontSize = 28.sp),
     headlineMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp),
@@ -54,15 +63,11 @@ fun HustleScoreTheme(
     darkTheme: Boolean = isSystemInDarkTheme(), // This should now come from your ViewModel
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) {
-        DarkColorScheme // Define your dark colors here
-    } else {
-        LightColorScheme // Define your light colors here
-    }
+
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = HustleTypography,
         content = content
     )
 }

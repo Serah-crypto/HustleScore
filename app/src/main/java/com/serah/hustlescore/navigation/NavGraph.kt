@@ -7,6 +7,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.hustlescore.screens.user.ScoreBreakdownScreen
 import com.hustlescore.ui.screens.auth.LoginScreen
+import com.serah.hustlescore.ui.screens.OnboardingScreen
 import com.serah.hustlescore.ui.screens.SplashScreen
 import com.serah.hustlescore.ui.screens.admin.AdminDashboardScreen
 import com.serah.hustlescore.ui.screens.admin.AlgorithmWeightScreen
@@ -39,6 +40,10 @@ fun NavGraph(
         composable(Routes.SplashScreen.route) {
             SplashScreen(navController)
         }
+        composable(Routes.Onboarding.route) {
+            OnboardingScreen(navController)
+        }
+
 
         // ── Auth ───────────────────────────────────────────────────────
         composable(Routes.Login.route) {

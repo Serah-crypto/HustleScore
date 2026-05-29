@@ -1,4 +1,4 @@
-package com.serah.sokohub.models
+package com.serah.hustlescore.models
 
 data class User(
     val username: String = "",

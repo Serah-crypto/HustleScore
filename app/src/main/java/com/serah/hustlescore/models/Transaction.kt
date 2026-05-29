@@ -95,6 +95,7 @@ enum class TransactionType {
     REVERSAL,
     SAVINGS,
     LOAN_REPAYMENT,
+    LOAN_RECEIVED,    // ✅ Added
     INCOME,
     EXPENSE
 }

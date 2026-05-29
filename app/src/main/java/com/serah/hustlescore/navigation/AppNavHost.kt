@@ -23,11 +23,11 @@ import com.serah.hustlescore.ui.screens.user.CreditReportScreen
 import com.serah.hustlescore.ui.screens.user.DashboardScreen
 import com.serah.hustlescore.ui.screens.user.FinancialAdviceScreen
 import com.serah.hustlescore.ui.screens.user.HomeScreen
-import com.serah.hustlescore.ui.screens.user.NotificationsScreen
 import com.serah.hustlescore.ui.screens.user.UploadSMSScreen
 import com.serah.hustlescore.ui.screens.user.UserDetailFormScreen
 import com.serah.hustlescore.ui.screens.user.UserProfileScreen
 import com.serah.hustlescore.ui.theme.ThemeViewModel
+import com.serah.hustlescore.ui.screens.user.NotificationsScreen
 
 @Composable
 fun AppNavHost(

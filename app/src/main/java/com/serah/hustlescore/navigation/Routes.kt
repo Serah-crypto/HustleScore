@@ -4,7 +4,13 @@ sealed class Routes(val route: String) {
 
     // ── Splash ─────────────────────────────────────────────────────────────
     object Splash : Routes("splashscreen")          // ✅ alias used in SplashScreen.kt
-    object SplashScreen : Routes("splashscreen")    // ✅ keeps NavGraph working
+    object SplashScreen : Routes("splashscreen")
+
+    object Onboarding    : Routes("onboarding")
+
+
+
+
 
     // ── Auth ───────────────────────────────────────────────────────────────
     object Login          : Routes("login")

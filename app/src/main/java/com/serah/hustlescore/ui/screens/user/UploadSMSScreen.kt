@@ -54,6 +54,7 @@ import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.hustlescore.ui.theme.HustleScoreTheme
+import com.serah.hustlescore.data.NotificationHelper
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
@@ -379,12 +380,20 @@ GHX33333 Confirmed. Ksh3000 paid to KPLC PREPAID on 10/03/2024 at 5:00 PM."""
                                 com.google.android.gms.tasks.Tasks.whenAllComplete(tasks)
                                     .addOnSuccessListener {
                                         loading = false
+
+                                        // ✅ Send notifications after successful save
+                                        val score = HustleScoreEngine.calculate(parsed)
+                                        NotificationHelper.scoreCalculated(uid, score)
+                                        NotificationHelper.lowScoreAlert(uid, score.totalScore)
+
                                         navController.navigate(Routes.ScoreBreakdown.route)
                                     }
                                     .addOnFailureListener { e ->
                                         loading = false
                                         Log.e("FirebaseSave", "Failed to save data", e)
                                     }
+
+
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),

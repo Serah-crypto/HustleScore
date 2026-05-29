@@ -3,44 +3,15 @@ package com.serah.hustlescore.ui.screens.user
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonDefaults.buttonColors
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,16 +19,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.components.ScoreGauge
 import com.serah.hustlescore.data.algorithm.HustleScoreEngine
@@ -65,18 +34,38 @@ import com.serah.hustlescore.models.HustleScore
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
 import com.serah.hustlescore.navigation.Routes
-import com.serah.hustlescore.ui.theme.BackgroundGray
-import com.serah.hustlescore.ui.theme.HustleGreen
-import com.serah.hustlescore.ui.theme.TextPrimary
-import com.serah.hustlescore.ui.theme.TextSecondary
+
+// ─── Palette ─────────────────────────────────────────────────────────────────
+private val GreenDeep    = Color(0xFF062110)
+private val GreenMid     = Color(0xFF0F4523)
+private val GreenBrand   = Color(0xFF1A7A3C)
+private val GreenLight   = Color(0xFF25A355)
+private val GreenAccent  = Color(0xFF4FCB78)
+private val GreenPale    = Color(0xFFD6F0E0)
+private val GreenSurface = Color(0xFFEEF8F2)
+private val Cream        = Color(0xFFFAF8F4)
+private val CreamCard    = Color(0xFFFFFDF9)
+private val CreamBorder  = Color(0xFFE8E0D4)
+private val Amber        = Color(0xFFD4860A)
+private val AmberPale    = Color(0xFFFFF0D4)
+private val Rust         = Color(0xFFC0521A)
+private val RustPale     = Color(0xFFFFECE0)
+private val Teal         = Color(0xFF1A7A6E)
+private val TealPale     = Color(0xFFD4F0EE)
+private val Plum         = Color(0xFF6E3A7A)
+private val PlumPale     = Color(0xFFF0E4F5)
+private val TextMain     = Color(0xFF0C200F)
+private val TextMuted    = Color(0xFF5C7A63)
 
 @Composable
 fun DashboardScreen(navController: NavController) {
     val currentUser = FirebaseAuth.getInstance().currentUser
     var transactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
-    var scoreData by remember { mutableStateOf<HustleScore?>(null) }
-    var loading by remember { mutableStateOf(true) }
+    var scoreData    by remember { mutableStateOf<HustleScore?>(null) }
+    var loading      by remember { mutableStateOf(true) }
     val firstName = currentUser?.displayName?.split(" ")?.firstOrNull() ?: "there"
+    val initials  = currentUser?.displayName?.split(" ")
+        ?.mapNotNull { it.firstOrNull()?.toString() }?.take(2)?.joinToString("") ?: "U"
 
     LaunchedEffect(Unit) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
@@ -88,154 +77,129 @@ fun DashboardScreen(navController: NavController) {
                     scoreData = if (txs.isNotEmpty()) HustleScoreEngine.calculate(txs) else null
                     loading = false
                 }
-                override fun onCancelled(error: DatabaseError) {
-                    loading = false
-                }
+                override fun onCancelled(error: DatabaseError) { loading = false }
             })
     }
 
-    val totalIncome = transactions
-        .filter { it.type == TransactionType.INCOME }
-        .sumOf { it.amount }
-    val totalExpenses = transactions
-        .filter { it.type == TransactionType.EXPENSE }
-        .sumOf { it.amount }
-    val totalSavings = transactions
-        .filter { it.type == TransactionType.SAVINGS }
-        .sumOf { it.amount }
+    val totalIncome   = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+    val totalExpenses = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+    val totalSavings  = transactions.filter { it.type == TransactionType.SAVINGS }.sumOf { it.amount }
+
+    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    val greeting = when { hour < 12 -> "Good morning"; hour < 17 -> "Good afternoon"; else -> "Good evening" }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundGray),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize().background(Cream),
+        contentPadding = PaddingValues(bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        // Greeting Header
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    val hour = java.util.Calendar.getInstance()
-                        .get(java.util.Calendar.HOUR_OF_DAY)
-                    val greeting = when {
-                        hour < 12 -> "Good morning"
-                        hour < 17 -> "Good afternoon"
-                        else -> "Good evening"
-                    }
-                    Text(
-                        text = "$greeting, $firstName 👋",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Here's your financial overview",
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
-                }
-                Button(
-                    onClick = { navController.navigate(Routes.UserDashboard.route) {
-                        popUpTo(0) { inclusive = true }
-                    } },
-                    colors = buttonColors(containerColor = HustleGreen),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Upload,
-                        contentDescription = "Upload",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Upload SMS", fontSize = 13.sp)
-                }
-            }
-        }
 
-
+        // ── HEADER ───────────────────────────────────────────────────────────
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(GreenDeep, GreenMid, GreenBrand)))
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(HustleGreen, Color(0xFF145A32))
-                            )
-                        )
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (scoreData != null) {
-                        val score = scoreData!!
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            ScoreGauge(score = score.totalScore, size = 150.dp)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = Color.White.copy(alpha = 0.2f)
+                // Decorative blobs
+                Box(Modifier.size(160.dp).align(Alignment.TopEnd).offset(x = 40.dp, y = (-30).dp)
+                    .background(GreenAccent.copy(alpha = 0.07f), CircleShape))
+                Box(Modifier.size(90.dp).align(Alignment.BottomStart).offset(x = (-20).dp, y = 20.dp)
+                    .background(Color.White.copy(alpha = 0.04f), CircleShape))
+
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
+                    // Top row
+                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(
+                                Modifier.size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Brush.linearGradient(listOf(GreenAccent, GreenLight))),
+                                Alignment.Center
                             ) {
-                                Text(
-                                    text = score.grade.label,
-                                    modifier = Modifier.padding(
-                                        horizontal = 16.dp,
-                                        vertical = 6.dp
-                                    ),
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
-                                )
+                                Text(initials, color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedButton(
-                                onClick = { navController.navigate(Routes.ScoreBreakdown.route) },
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color.White
-                                ),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
-                            ) {
-                                Text(text = "View Breakdown", fontSize = 13.sp)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                            Column {
+                                Text("$greeting, $firstName 👋", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("Here's your financial overview", fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f))
                             }
                         }
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "No Score Yet",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                            Text(
-                                text = "Upload M-Pesa SMS to get started",
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 13.sp
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(
-                                onClick = { navController.navigate(Routes.UploadSms.route) },
-                                colors = buttonColors(
-                                    containerColor = Color.White
-                                )
+                        // Upload SMS button
+                        Box(
+                            Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.15f))
+                                .clickable {
+                                    navController.navigate(Routes.UserDashboard.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Icon(Icons.Default.Upload, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                Text("Upload SMS", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // ── Score gauge card ──────────────────────────────────────
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.White.copy(alpha = 0.10f)
+                    ) {
+                        if (scoreData != null) {
+                            val score = scoreData!!
+                            Column(
+                                Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                ScoreGauge(score = score.totalScore, size = 150.dp)
+                                Spacer(Modifier.height(12.dp))
+                                Surface(shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.18f)) {
+                                    Text(
+                                        score.grade.label,
+                                        Modifier.padding(horizontal = 18.dp, vertical = 7.dp),
+                                        color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp
+                                    )
+                                }
+                                Spacer(Modifier.height(14.dp))
+                                OutlinedButton(
+                                    onClick = { navController.navigate(Routes.ScoreBreakdown.route) },
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.45f)),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("View Breakdown", fontSize = 13.sp)
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        } else {
+                            Column(
+                                Modifier.fillMaxWidth().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text("No Score Yet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                                 Text(
-                                    text = "Upload SMS",
-                                    color = HustleGreen,
-                                    fontWeight = FontWeight.SemiBold
+                                    "Upload your M-Pesa SMS to get your HustleScore",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 13.sp
                                 )
+                                Spacer(Modifier.height(4.dp))
+                                Button(
+                                    onClick = { navController.navigate(Routes.UploadSms.route) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Upload, null, tint = GreenBrand, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Upload SMS", color = GreenBrand, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                     }
@@ -243,287 +207,213 @@ fun DashboardScreen(navController: NavController) {
             }
         }
 
-        // Stats Row 1
+        // ── STAT CARDS ────────────────────────────────────────────────────────
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).offset(y = (-16).dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Income",
-                    value = "KSh ${(totalIncome / 1000).toInt()}k",
-                    color = Color(0xFF16A34A),
-                    bgColor = Color(0xFFDCFCE7)
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Expenses",
-                    value = "KSh ${(totalExpenses / 1000).toInt()}k",
-                    color = Color(0xFFDC2626),
-                    bgColor = Color(0xFFFEE2E2)
-                )
+                DashStatCard(Modifier.weight(1f), "Income",   "KSh ${(totalIncome/1000).toInt()}k",   Icons.Default.TrendingUp,   GreenBrand, GreenPale)
+                DashStatCard(Modifier.weight(1f), "Expenses", "KSh ${(totalExpenses/1000).toInt()}k", Icons.Default.TrendingDown, Rust,       RustPale)
+            }
+        }
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).offset(y = (-8).dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                DashStatCard(Modifier.weight(1f), "Savings",      "KSh ${(totalSavings/1000).toInt()}k", Icons.Default.Savings,    Teal, TealPale)
+                DashStatCard(Modifier.weight(1f), "Transactions", "${transactions.size}",                 Icons.Default.SwapHoriz,  Plum, PlumPale)
             }
         }
 
-        // Stats Row 2
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Savings",
-                    value = "KSh ${(totalSavings / 1000).toInt()}k",
-                    color = Color(0xFF2563EB),
-                    bgColor = Color(0xFFDBEAFE)
-                )
-                StatCard(
-                    modifier = Modifier.weight(1f),
-                    label = "Transactions",
-                    value = "${transactions.size}",
-                    color = Color(0xFF7C3AED),
-                    bgColor = Color(0xFFEDE9FE)
-                )
-            }
-        }
-
-        // Quick Actions Header
+        // ── QUICK ACTIONS ─────────────────────────────────────────────────────
         item {
             Text(
-                text = "Quick Actions",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                "Quick Actions",
+                fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextMain,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
         }
 
         item {
-            QuickActionCard(
+            DashQuickActionCard(
                 title = "Download Report",
                 subtitle = "Get your credit profile PDF",
                 icon = Icons.Default.Description,
-                color = Color(0xFF2563EB)
-            ) {
-                navController.navigate(Routes.CreditReport.route)
-            }
+                iconColor = Teal,
+                iconBg = TealPale
+            ) { navController.navigate(Routes.CreditReport.route) }
         }
 
+        item { Spacer(Modifier.height(4.dp)) }
+
         item {
-            QuickActionCard(
+            DashQuickActionCard(
                 title = "Financial Advice",
                 subtitle = "Personalized tips for you",
                 icon = Icons.Default.Lightbulb,
-                color = Color(0xFFF59E0B)
-            ) {
-                navController.navigate(Routes.FinancialAdvice.route)
-            }
+                iconColor = Amber,
+                iconBg = AmberPale
+            ) { navController.navigate(Routes.FinancialAdvice.route) }
         }
 
-        // Recent Transactions
+        // ── RECENT TRANSACTIONS ───────────────────────────────────────────────
         if (transactions.isNotEmpty()) {
             item {
-                Text(
-                    text = "Recent Transactions",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    Arrangement.SpaceBetween, Alignment.CenterVertically
+                ) {
+                    Text("Recent Transactions", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextMain)
+                    Text(
+                        "View all →", fontSize = 12.sp, color = GreenBrand, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { navController.navigate(Routes.ScoreBreakdown.route) }
+                    )
+                }
             }
-            items(transactions.take(5)) { transaction ->
-                TransactionListItem(transaction = transaction)
+            item {
+                Card(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    RoundedCornerShape(20.dp),
+                    CardDefaults.cardColors(CreamCard),
+                    CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(Modifier.padding(vertical = 6.dp)) {
+                        transactions.take(5).forEachIndexed { index, tx ->
+                            DashTransactionRow(tx)
+                            if (index < minOf(transactions.size, 5) - 1)
+                                Divider(Modifier.padding(horizontal = 16.dp), color = CreamBorder, thickness = 0.8.dp)
+                        }
+                    }
+                }
             }
         }
 
-        // ✅ FIXED: Wrap the Button inside item { }
+        // ── ADD TRANSACTION BUTTON ────────────────────────────────────────────
         item {
             Button(
                 onClick = { navController.navigate(Routes.AddTransaction.route) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),           // Slightly better height
-                colors = ButtonDefaults.buttonColors(containerColor = HustleGreen),
-                shape = RoundedCornerShape(14.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp).height(54.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenBrand),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Add Transaction",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+                Text("Add Transaction", fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }
 }
 
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 @Composable
-fun StatCard(
+fun DashStatCard(
     modifier: Modifier = Modifier,
     label: String,
     value: String,
+    icon: ImageVector,
     color: Color,
     bgColor: Color
 ) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Card(modifier, RoundedCornerShape(18.dp), CardDefaults.cardColors(CreamCard), CardDefaults.cardElevation(3.dp)) {
+        Column(Modifier.padding(14.dp)) {
             Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(bgColor),
-                contentAlignment = Alignment.Center
+                Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(bgColor),
+                Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.AttachMoney,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = label, fontSize = 11.sp, color = TextSecondary)
-            Text(
-                text = value,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
+            Spacer(Modifier.height(10.dp))
+            Text(label, fontSize = 11.sp, color = TextMuted, fontWeight = FontWeight.Medium)
+            Text(value, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = color)
         }
     }
 }
 
+// ─── Quick Action Card ────────────────────────────────────────────────────────
 @Composable
-fun QuickActionCard(
+fun DashQuickActionCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    color: Color,
+    iconColor: Color,
+    iconBg: Color,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                onClick = onClick,
-                enabled = true
-            ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(   // Use this instead
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp
-        )
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onClick() },
+        RoundedCornerShape(18.dp),
+        CardDefaults.cardColors(CreamCard),
+        CardDefaults.cardElevation(2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color),
-                contentAlignment = Alignment.Center
+                Modifier.size(46.dp).clip(RoundedCornerShape(14.dp)).background(iconBg),
+                Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
+                Icon(icon, null, tint = iconColor, modifier = Modifier.size(24.dp))
             }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = subtitle,
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextMain)
+                Text(subtitle, color = TextMuted, fontSize = 12.sp)
             }
-
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = TextSecondary
-            )
+            Box(
+                Modifier.size(30.dp).clip(CircleShape).background(GreenSurface),
+                Alignment.Center
+            ) {
+                Icon(Icons.Default.ChevronRight, null, tint = GreenBrand, modifier = Modifier.size(18.dp))
+            }
         }
     }
 }
 
-
+// ─── Transaction Row ──────────────────────────────────────────────────────────
 @Composable
-fun TransactionListItem(transaction: Transaction) {
+fun DashTransactionRow(transaction: Transaction) {
     val isIncome = transaction.type == TransactionType.INCOME
+    val amtColor = if (isIncome) GreenBrand else Rust
+    val bgColor  = if (isIncome) GreenPale  else RustPale
+
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(
-                    if (isIncome) Color(0xFFDCFCE7) else Color(0xFFFEE2E2)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (isIncome) "↑" else "↓",
-                color = if (isIncome) Color(0xFF16A34A) else Color(0xFFDC2626),
-                fontWeight = FontWeight.Bold
-            )
+        Box(Modifier.size(38.dp).clip(CircleShape).background(bgColor), Alignment.Center) {
+            Text(if (isIncome) "↑" else "↓", color = amtColor, fontWeight = FontWeight.Black, fontSize = 16.sp)
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
             Text(
-                text = transaction.description.orEmpty().ifBlank { "M-Pesa Transaction" },
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
+                transaction.description.orEmpty().ifBlank { "M-Pesa Transaction" },
+                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextMain,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-
-            Text(
-                text = transaction.date,
-                fontSize = 11.sp,
-                color = TextSecondary
-            )
+            Text(transaction.date, fontSize = 11.sp, color = TextMuted)
         }
         Text(
-            text = "${if (isIncome) "+" else "-"}KSh ${
-                String.format("%,.0f", transaction.amount)
-            }",
-            color = if (isIncome) Color(0xFF16A34A) else Color(0xFFDC2626),
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp
+            "${if (isIncome) "+" else "-"}KSh ${String.format("%,.0f", transaction.amount)}",
+            color = amtColor, fontWeight = FontWeight.Bold, fontSize = 13.sp
         )
     }
 }
 
+// Keep old names as aliases so existing call sites compile
+@Composable
+fun StatCard(modifier: Modifier = Modifier, label: String, value: String, color: Color, bgColor: Color) =
+    DashStatCard(modifier, label, value, Icons.Default.AttachMoney, color, bgColor)
 
+@Composable
+fun QuickActionCard(title: String, subtitle: String, icon: ImageVector, color: Color, onClick: () -> Unit) =
+    DashQuickActionCard(title, subtitle, icon, color, color.copy(alpha = 0.12f), onClick)
 
+@Composable
+fun TransactionListItem(transaction: Transaction) = DashTransactionRow(transaction)
+
+// ─── Preview ──────────────────────────────────────────────────────────────────
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun DashboardScreenPreview() {
-    HustleScoreTheme {   // Replace with your actual Theme name if different
-        DashboardScreen(navController = rememberNavController())
-    }
+    HustleScoreTheme { DashboardScreen(navController = rememberNavController()) }
 }

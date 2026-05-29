@@ -35,14 +35,12 @@ import androidx.compose.material.icons.filled.LightMode
 @Composable
 fun UserProfileScreen(
     navController: NavController,
-    // ✅ Added default value to fix the NavGraph error from your screenshot
     themeViewModel: ThemeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val isDarkMode by themeViewModel.isDarkMode.collectAsState()
 
-    // ✅ Dynamic Colors based on theme state
     val backgroundColor = if (isDarkMode) Color(0xFF121212) else Color(0xFFF4F6F9)
     val cardColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
     val primaryText = if (isDarkMode) Color.White else Color(0xFF111827)
@@ -62,7 +60,7 @@ fun UserProfileScreen(
     LaunchedEffect(currentUser?.uid) {
         val uid = currentUser?.uid ?: return@LaunchedEffect
         FirebaseDatabase.getInstance()
-            .getReference("users/$uid/profile")
+            .getReference("Users/$uid/profile")  // ✅ Fixed: capital U
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val map = snapshot.value as? Map<String, Any?> ?: return
@@ -88,11 +86,10 @@ fun UserProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor) // ✅ Applied dynamic background
+            .background(backgroundColor)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ── Header banner (Stays green, but adjustments for contrast) ──
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -146,13 +143,12 @@ fun UserProfileScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // ── Info cards with dynamic containerColors ──
         val cardMod = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
 
         Card(
             modifier = cardMod,
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = cardColor), // ✅ Dynamic Card
+            colors = CardDefaults.cardColors(containerColor = cardColor),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -169,7 +165,7 @@ fun UserProfileScreen(
         Card(
             modifier = cardMod,
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = cardColor), // ✅ Dynamic Card
+            colors = CardDefaults.cardColors(containerColor = cardColor),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -199,7 +195,6 @@ fun UserProfileScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        // ── Theme toggle ──
         Card(
             modifier = cardMod,
             shape = RoundedCornerShape(20.dp),

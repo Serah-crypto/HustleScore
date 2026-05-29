@@ -65,17 +65,20 @@ fun NotificationsScreen(navController: NavController) {
     val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     LaunchedEffect(Unit) {
+        if (uid.isBlank()) { loading = false; return@LaunchedEffect }
         FirebaseDatabase.getInstance().getReference("notifications/$uid")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     notifications = snapshot.children.mapNotNull { child ->
-                        val map = child.getValue(object : com.google.firebase.database.GenericTypeIndicator<Map<String, Any>>() {}) ?: return@mapNotNull null
+                        val map = child.getValue(
+                            object : com.google.firebase.database.GenericTypeIndicator<Map<String, Any>>() {}
+                        ) ?: return@mapNotNull null
                         AppNotification(
                             id        = child.key ?: "",
-                            title     = map["title"] as? String ?: "",
-                            message   = map["message"] as? String ?: "",
-                            type      = map["type"] as? String ?: "system",
-                            isRead    = map["isRead"] as? Boolean ?: false,
+                            title     = map["title"]     as? String  ?: "",
+                            message   = map["message"]   as? String  ?: "",
+                            type      = map["type"]      as? String  ?: "system",
+                            isRead    = map["isRead"]    as? Boolean ?: false,
                             createdAt = (map["createdAt"] as? Number)?.toLong() ?: 0L
                         )
                     }.sortedByDescending { it.createdAt }
@@ -87,11 +90,17 @@ fun NotificationsScreen(navController: NavController) {
 
     val unreadCount = notifications.count { !it.isRead }
 
-    Column(modifier = Modifier.fillMaxSize().background(BackgroundGray)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundGray)
+    ) {
 
-        // Header
+        // ── Header ────────────────────────────────────────────────────────────
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -104,87 +113,151 @@ fun NotificationsScreen(navController: NavController) {
                             Text(
                                 "$unreadCount",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
-                Text("${notifications.size} total notifications", fontSize = 13.sp, color = TextSecondary)
+                Text(
+                    "${notifications.size} total notifications",
+                    fontSize = 13.sp,
+                    color = TextSecondary
+                )
             }
+
             if (unreadCount > 0) {
                 TextButton(onClick = {
-                    val db = FirebaseDatabase.getInstance().getReference("notifications/$uid")
+                    val db = FirebaseDatabase.getInstance()
+                        .getReference("notifications/$uid")
                     notifications.filter { !it.isRead }.forEach { n ->
                         db.child(n.id).child("isRead").setValue(true)
                     }
-                }) { Text("Mark All Read", fontSize = 12.sp, color = HustleGreen) }
+                }) {
+                    Text("Mark All Read", fontSize = 12.sp, color = HustleGreen)
+                }
             }
         }
 
+        // ── Content ───────────────────────────────────────────────────────────
         when {
-            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = HustleGreen)
-            }
-            notifications.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(
-                        modifier = Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFFE5E7EB)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(32.dp), tint = TextSecondary)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    Text("All caught up!", fontWeight = FontWeight.SemiBold, color = TextSecondary)
+            loading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = HustleGreen)
                 }
             }
-            else -> LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                itemsIndexed(notifications) { _, notif ->
-                    val (iconRes, bgColor) = when (notif.type) {
-                        "score_update" -> Icons.Default.TrendingUp to Color(0xFFDCFCE7)
-                        "tip"          -> Icons.Default.Lightbulb   to Color(0xFFFEF3C7)
-                        "alert"        -> Icons.Default.Warning      to Color(0xFFFEE2E2)
-                        else           -> Icons.Default.Info         to Color(0xFFDBEAFE)
-                    }
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(4.dp),
-                        border = if (!notif.isRead) BorderStroke(2.dp, HustleGreen) else null,
-                        modifier = Modifier.clickable {
-                            if (!notif.isRead)
-                                FirebaseDatabase.getInstance()
-                                    .getReference("notifications/$uid/${notif.id}/isRead")
-                                    .setValue(true)
+
+            notifications.isEmpty() -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0xFFE5E7EB)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = TextSecondary
+                            )
                         }
-                    ) {
-                        Row(modifier = Modifier.padding(14.dp)) {
-                            Box(
-                                modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(bgColor),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(iconRes, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color(0xFF374151))
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        notif.title,
-                                        fontWeight = if (!notif.isRead) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 14.sp,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (!notif.isRead)
-                                        Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(HustleGreen))
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "All caught up!",
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextSecondary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "No notifications yet.",
+                            fontSize = 13.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    itemsIndexed(notifications) { _, notif ->
+                        val (iconRes, bgColor) = when (notif.type) {
+                            "score_update" -> Icons.Default.TrendingUp to Color(0xFFDCFCE7)
+                            "tip"          -> Icons.Default.Lightbulb  to Color(0xFFFEF3C7)
+                            "alert"        -> Icons.Default.Warning     to Color(0xFFFEE2E2)
+                            else           -> Icons.Default.Info        to Color(0xFFDBEAFE)
+                        }
+
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(4.dp),
+                            border = if (!notif.isRead) BorderStroke(2.dp, HustleGreen) else null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (!notif.isRead) {
+                                        FirebaseDatabase.getInstance()
+                                            .getReference("notifications/$uid/${notif.id}/isRead")
+                                            .setValue(true)
+                                    }
                                 }
-                                Spacer(Modifier.height(2.dp))
-                                Text(notif.message, fontSize = 12.sp, color = TextSecondary, lineHeight = 17.sp)
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    java.text.SimpleDateFormat("dd MMM, HH:mm").format(java.util.Date(notif.createdAt)),
-                                    fontSize = 10.sp, color = TextSecondary
-                                )
+                        ) {
+                            Row(modifier = Modifier.padding(14.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(bgColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        iconRes,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = Color(0xFF374151)
+                                    )
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            notif.title,
+                                            fontWeight = if (!notif.isRead) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 14.sp,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        if (!notif.isRead) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(HustleGreen)
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        notif.message,
+                                        fontSize = 12.sp,
+                                        color = TextSecondary,
+                                        lineHeight = 17.sp
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        java.text.SimpleDateFormat(
+                                            "dd MMM, HH:mm",
+                                            java.util.Locale.getDefault()
+                                        ).format(java.util.Date(notif.createdAt)),
+                                        fontSize = 10.sp,
+                                        color = TextSecondary
+                                    )
+                                }
                             }
                         }
                     }
@@ -194,11 +267,10 @@ fun NotificationsScreen(navController: NavController) {
     }
 }
 
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun NotificationsScreenPreview() {
-    HustleScoreTheme {   // Replace with your actual Theme name if different
+    HustleScoreTheme {
         NotificationsScreen(navController = rememberNavController())
     }
 }
