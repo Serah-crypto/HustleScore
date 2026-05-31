@@ -33,10 +33,14 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 
 @Composable
+
+
+// AFTER (correct — uses the shared instance)
 fun UserProfileScreen(
     navController: NavController,
-    themeViewModel: ThemeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-) {
+    themeViewModel: ThemeViewModel
+)
+ {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
     val isDarkMode by themeViewModel.isDarkMode.collectAsState()

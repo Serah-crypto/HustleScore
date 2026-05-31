@@ -64,25 +64,44 @@ fun NavGraph(
             )
         }
         composable(Routes.Home.route) {
-            HomeScreen(navController)
+            HomeScreen(navController = navController,
+            themeViewModel = themeViewModel)
         }
         composable(Routes.UserDashboard.route) {
-            DashboardScreen(navController)
+            DashboardScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
         }
         composable(Routes.UploadSms.route) {
-            UploadSMSScreen(navController)
+            UploadSMSScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
         }
         composable(Routes.ScoreBreakdown.route) {
-            ScoreBreakdownScreen(navController)
+            ScoreBreakdownScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
         }
         composable(Routes.CreditReport.route) {
-            CreditReportScreen(navController)
+            CreditReportScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
         }
         composable(Routes.FinancialAdvice.route) {
-            FinancialAdviceScreen(navController)
+            FinancialAdviceScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
         }
         composable(Routes.Notifications.route) {
-            NotificationsScreen(navController)
+            NotificationsScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
         }
         composable(Routes.AddTransaction.route) {          // ✅ was missing
             AddTransactionScreen(navController)

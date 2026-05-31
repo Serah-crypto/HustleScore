@@ -29,6 +29,7 @@ import com.serah.hustlescore.ui.screens.user.UserProfileScreen
 import com.serah.hustlescore.ui.theme.ThemeViewModel
 import com.serah.hustlescore.ui.screens.user.NotificationsScreen
 
+
 @Composable
 fun AppNavHost(
     modifier         : Modifier         = Modifier,
@@ -42,26 +43,76 @@ fun AppNavHost(
         modifier         = modifier
     ) {
         composable(Routes.Login.route)          { LoginScreen(navController) }
+        composable(Routes.UserProfile.route) {
+            UserProfileScreen(
+                navController = navController,
+                themeViewModel = themeViewModel  // pass it in
+            )
+        }
         composable(Routes.Register.route)       { RegisterScreen(navController) }
         composable(Routes.ForgotPassword.route) { ForgotPasswordScreen(navController) }
         composable(Routes.SplashScreen.route)   { SplashScreen(navController) }
 
-        composable(Routes.Home.route)            { HomeScreen(navController) }
-        composable(Routes.UserDashboard.route)   { DashboardScreen(navController) }
-        composable(Routes.CreditReport.route)    { CreditReportScreen(navController) }
-        composable(Routes.FinancialAdvice.route) { FinancialAdviceScreen(navController) }
-        composable(Routes.Notifications.route)   { NotificationsScreen(navController) }
-        composable(Routes.ScoreBreakdown.route)  { ScoreBreakdownScreen(navController) }
-        composable(Routes.UploadSms.route)       { UploadSMSScreen(navController) }
-        composable(Routes.AddTransaction.route)  { AddTransactionScreen(navController) }
+        composable(Routes.Home.route)            {
+            HomeScreen(
+                navController = navController,
+                themeViewModel = themeViewModel)
+        }
+
+        composable(Routes.UserDashboard.route)   {
+            DashboardScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
+
+        }
+        composable(Routes.CreditReport.route)  {
+            CreditReportScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
+        }
+
+        composable(Routes.FinancialAdvice.route) {
+            FinancialAdviceScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
+        }
+
+        composable(Routes.Notifications.route)   {
+            NotificationsScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
+        }
+
+        composable(Routes.ScoreBreakdown.route)  {
+            ScoreBreakdownScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
+        }
+
+        composable(Routes.UploadSms.route)       {
+            UploadSMSScreen(
+                navController = navController,
+                themeViewModel = themeViewModel
+            )
+        }
+
+        composable(Routes.AddTransaction.route) {
+            AddTransactionScreen(navController = navController, themeViewModel = themeViewModel)
+        }
+        composable(Routes.UserDetailForm.route) {
+            UserDetailFormScreen(navController = navController, themeViewModel = themeViewModel)
+        }
 
         // ✅ UserProfileScreen receives themeViewModel so it can show the toggle
         composable(Routes.UserProfile.route) {
             UserProfileScreen(navController = navController, themeViewModel = themeViewModel)
         }
-        composable(Routes.UserDetailForm.route) {
-            UserDetailFormScreen(navController)
-        }
+
 
         composable(Routes.AdminDashboard.route)  { AdminDashboardScreen(navController) }
         composable(Routes.AlgorithmWeight.route) { AlgorithmWeightScreen(navController) }

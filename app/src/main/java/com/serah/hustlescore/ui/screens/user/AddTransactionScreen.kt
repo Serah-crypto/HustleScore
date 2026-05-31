@@ -20,41 +20,29 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.hustlescore.ui.theme.HustleScoreTheme
 import com.serah.hustlescore.models.Transaction
 import com.serah.hustlescore.models.TransactionType
-import com.serah.hustlescore.ui.theme.*
+import com.serah.hustlescore.ui.theme.ThemeViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-// ─── Palette (mirrors HomeScreen) ────────────────────────────────────────────
-private val GreenDeep    = Color(0xFF062110)
-private val GreenMid     = Color(0xFF0F4523)
-private val GreenBrand   = Color(0xFF1A7A3C)
-private val GreenLight   = Color(0xFF25A355)
-private val GreenAccent  = Color(0xFF4FCB78)
-private val GreenPale    = Color(0xFFD6F0E0)
-private val GreenSurface = Color(0xFFEEF8F2)
-private val Cream        = Color(0xFFFAF8F4)
-private val CreamCard    = Color(0xFFFFFDF9)
-private val CreamBorder  = Color(0xFFE8E0D4)
-private val Amber        = Color(0xFFD4860A)
-private val AmberPale    = Color(0xFFFFF0D4)
-private val Rust         = Color(0xFFC0521A)
-private val RustPale     = Color(0xFFFFECE0)
-private val Teal         = Color(0xFF1A7A6E)
-private val TealPale     = Color(0xFFD4F0EE)
-private val Plum         = Color(0xFF6E3A7A)
-private val PlumPale     = Color(0xFFF0E4F5)
-private val TextMain     = Color(0xFF0C200F)
-private val TextMuted    = Color(0xFF5C7A63)
+// ─── Fixed colour tokens ──────────────────────────────────────────────────────
+private val GreenDeep   = Color(0xFF062110)
+private val GreenMid    = Color(0xFF0F4523)
+private val GreenBrand  = Color(0xFF1A7A3C)
+private val GreenAccent = Color(0xFF4FCB78)
+private val GreenPale   = Color(0xFFD6F0E0)
+private val Rust        = Color(0xFFC0521A)
+private val RustPale    = Color(0xFFFFECE0)
+private val Teal        = Color(0xFF1A7A6E)
+private val TealPale    = Color(0xFFD4F0EE)
+private val Plum        = Color(0xFF6E3A7A)
+private val PlumPale    = Color(0xFFF0E4F5)
 
-// ─── Type configs (colours swapped to palette) ────────────────────────────────
+// ─── Type configs ─────────────────────────────────────────────────────────────
 private data class TypeConfig(
     val type: TransactionType,
     val label: String,
@@ -74,15 +62,24 @@ private val typeConfigs = listOf(
 @Composable
 fun AddTransactionScreen(
     navController: NavController,
+    themeViewModel: ThemeViewModel,
     onSaveTransaction: (Transaction) -> Unit = {}
 ) {
-    var selectedType  by remember { mutableStateOf(TransactionType.RECEIVED) }
-    var amount        by remember { mutableStateOf("") }
-    var description   by remember { mutableStateOf("") }
-    var category      by remember { mutableStateOf("") }
-    var selectedDate  by remember {
-        mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
-    }
+    val isDarkMode by themeViewModel.isDarkMode.collectAsState()
+
+    // ── Theme-aware colours ───────────────────────────────────────────────────
+    val backgroundColor = if (isDarkMode) Color(0xFF121212) else Color(0xFFFAF8F4)
+    val cardColor       = if (isDarkMode) Color(0xFF1E1E1E) else Color(0xFFFFFDF9)
+    val primaryText     = if (isDarkMode) Color.White       else Color(0xFF0C200F)
+    val secondaryText   = if (isDarkMode) Color(0xFF9CA3AF) else Color(0xFF5C7A63)
+    val borderColor     = if (isDarkMode) Color(0xFF374151) else Color(0xFFE8E0D4)
+    val fieldBg         = if (isDarkMode) Color(0xFF2A2A2A) else Color(0xFFFAF8F4)
+
+    var selectedType   by remember { mutableStateOf(TransactionType.RECEIVED) }
+    var amount         by remember { mutableStateOf("") }
+    var description    by remember { mutableStateOf("") }
+    var category       by remember { mutableStateOf("") }
+    var selectedDate   by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())) }
     var showDatePicker by remember { mutableStateOf(false) }
     var saving         by remember { mutableStateOf(false) }
 
@@ -103,7 +100,7 @@ fun AddTransactionScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = TextMuted)
+                    Text("Cancel", color = secondaryText)
                 }
             }
         ) { DatePicker(state = datePickerState) }
@@ -112,31 +109,19 @@ fun AddTransactionScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Cream)
+            .background(backgroundColor)
             .verticalScroll(rememberScrollState())
     ) {
 
         // ── HEADER ────────────────────────────────────────────────────────────
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(GreenDeep, GreenMid)))
-        ) {
-            // Decorative blob
-            Box(
-                Modifier
-                    .size(120.dp)
-                    .align(Alignment.TopEnd)
-                    .offset(x = 30.dp, y = (-20).dp)
-                    .background(GreenAccent.copy(alpha = 0.07f), CircleShape)
-            )
+        Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(GreenDeep, GreenMid)))) {
+            Box(Modifier.size(120.dp).align(Alignment.TopEnd).offset(x = 30.dp, y = (-20).dp)
+                .background(GreenAccent.copy(alpha = 0.07f), CircleShape))
 
             Column(Modifier.padding(horizontal = 20.dp, vertical = 24.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                        Modifier.size(38.dp).clip(RoundedCornerShape(12.dp))
                             .background(Color.White.copy(alpha = 0.12f))
                             .clickable { navController.popBackStack() },
                         Alignment.Center
@@ -146,79 +131,45 @@ fun AddTransactionScreen(
                     Spacer(Modifier.width(14.dp))
                     Column {
                         Text("Add Transaction", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text(
-                            "Record income, expense, savings or repayment",
-                            fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f)
-                        )
+                        Text("Record income, expense, savings or repayment",
+                            fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f))
                     }
                 }
 
                 Spacer(Modifier.height(20.dp))
 
-                // Active type summary pill
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White.copy(alpha = 0.13f)
-                ) {
-                    Row(
-                        Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
+                Surface(shape = RoundedCornerShape(14.dp), color = Color.White.copy(alpha = 0.13f)) {
+                    Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(activeConfig.emoji, fontSize = 22.sp)
                         Column {
-                            Text(
-                                activeConfig.label,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                if (amount.isBlank()) "Enter amount below" else "KSh $amount",
-                                color = Color.White.copy(alpha = 0.65f),
-                                fontSize = 12.sp
-                            )
+                            Text(activeConfig.label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(if (amount.isBlank()) "Enter amount below" else "KSh $amount",
+                                color = Color.White.copy(alpha = 0.65f), fontSize = 12.sp)
                         }
                         Spacer(Modifier.weight(1f))
-                        Box(
-                            Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(GreenAccent)
-                        )
+                        Box(Modifier.size(10.dp).clip(CircleShape).background(GreenAccent))
                     }
                 }
             }
         }
 
         // ── BODY ──────────────────────────────────────────────────────────────
-        Column(
-            Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
             // Type Selector
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(CreamCard),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
+            Card(shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(cardColor),
+                elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(
-                            Modifier.size(6.dp).clip(CircleShape).background(GreenBrand)
-                        )
-                        Text(
-                            "Transaction Type",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextMain
-                        )
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(GreenBrand))
+                        Text("Transaction Type", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = primaryText)
                     }
                     Spacer(Modifier.height(14.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         typeConfigs.take(2).forEach { config ->
-                            TypeChip(
+                            AddTypeChip(
                                 config = config,
                                 isSelected = selectedType == config.type,
                                 modifier = Modifier.weight(1f),
@@ -229,7 +180,7 @@ fun AddTransactionScreen(
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         typeConfigs.drop(2).forEach { config ->
-                            TypeChip(
+                            AddTypeChip(
                                 config = config,
                                 isSelected = selectedType == config.type,
                                 modifier = Modifier.weight(1f),
@@ -241,16 +192,14 @@ fun AddTransactionScreen(
             }
 
             // Form Fields
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(CreamCard),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
+            Card(shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(cardColor),
+                elevation = CardDefaults.cardElevation(2.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.size(6.dp).clip(CircleShape).background(GreenBrand))
-                        Text("Details", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextMain)
+                        Text("Details", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = primaryText)
                     }
 
                     // Amount
@@ -258,17 +207,19 @@ fun AddTransactionScreen(
                         value = amount,
                         onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Amount (KSh)", color = TextMuted) },
-                        placeholder = { Text("e.g. 5000", color = TextMuted.copy(alpha = 0.5f)) },
+                        label = { Text("Amount (KSh)", color = secondaryText) },
+                        placeholder = { Text("e.g. 5000", color = secondaryText.copy(alpha = 0.5f)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         leadingIcon = { Text(activeConfig.emoji, fontSize = 18.sp, modifier = Modifier.padding(start = 4.dp)) },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = activeConfig.color,
-                            unfocusedBorderColor = CreamBorder,
-                            focusedLabelColor = activeConfig.color,
-                            cursorColor = activeConfig.color,
-                            unfocusedContainerColor = Cream,
-                            focusedContainerColor = activeConfig.bgColor.copy(alpha = 0.3f)
+                            focusedBorderColor      = activeConfig.color,
+                            unfocusedBorderColor    = borderColor,
+                            focusedLabelColor       = activeConfig.color,
+                            cursorColor             = activeConfig.color,
+                            unfocusedContainerColor = fieldBg,
+                            focusedContainerColor   = activeConfig.bgColor.copy(alpha = if (isDarkMode) 0.15f else 0.3f),
+                            focusedTextColor        = primaryText,
+                            unfocusedTextColor      = primaryText
                         ),
                         shape = RoundedCornerShape(14.dp)
                     )
@@ -278,16 +229,18 @@ fun AddTransactionScreen(
                         value = description,
                         onValueChange = { description = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Description", color = TextMuted) },
-                        placeholder = { Text("Salary, groceries, etc.", color = TextMuted.copy(alpha = 0.5f)) },
+                        label = { Text("Description", color = secondaryText) },
+                        placeholder = { Text("Salary, groceries, etc.", color = secondaryText.copy(alpha = 0.5f)) },
                         maxLines = 2,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GreenBrand,
-                            unfocusedBorderColor = CreamBorder,
-                            focusedLabelColor = GreenBrand,
-                            cursorColor = GreenBrand,
-                            unfocusedContainerColor = Cream,
-                            focusedContainerColor = GreenSurface
+                            focusedBorderColor      = GreenBrand,
+                            unfocusedBorderColor    = borderColor,
+                            focusedLabelColor       = GreenBrand,
+                            cursorColor             = GreenBrand,
+                            unfocusedContainerColor = fieldBg,
+                            focusedContainerColor   = if (isDarkMode) Color(0xFF1A2E1F) else Color(0xFFEEF8F2),
+                            focusedTextColor        = primaryText,
+                            unfocusedTextColor      = primaryText
                         ),
                         shape = RoundedCornerShape(14.dp)
                     )
@@ -297,15 +250,17 @@ fun AddTransactionScreen(
                         value = category,
                         onValueChange = { category = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Category (optional)", color = TextMuted) },
-                        placeholder = { Text("e.g. salary, shopping", color = TextMuted.copy(alpha = 0.5f)) },
+                        label = { Text("Category (optional)", color = secondaryText) },
+                        placeholder = { Text("e.g. salary, shopping", color = secondaryText.copy(alpha = 0.5f)) },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GreenBrand,
-                            unfocusedBorderColor = CreamBorder,
-                            focusedLabelColor = GreenBrand,
-                            cursorColor = GreenBrand,
-                            unfocusedContainerColor = Cream,
-                            focusedContainerColor = GreenSurface
+                            focusedBorderColor      = GreenBrand,
+                            unfocusedBorderColor    = borderColor,
+                            focusedLabelColor       = GreenBrand,
+                            cursorColor             = GreenBrand,
+                            unfocusedContainerColor = fieldBg,
+                            focusedContainerColor   = if (isDarkMode) Color(0xFF1A2E1F) else Color(0xFFEEF8F2),
+                            focusedTextColor        = primaryText,
+                            unfocusedTextColor      = primaryText
                         ),
                         shape = RoundedCornerShape(14.dp)
                     )
@@ -315,38 +270,33 @@ fun AddTransactionScreen(
                         value = selectedDate,
                         onValueChange = {},
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Date", color = TextMuted) },
+                        label = { Text("Date", color = secondaryText) },
                         readOnly = true,
                         trailingIcon = {
                             Box(
-                                Modifier
-                                    .padding(end = 8.dp)
-                                    .size(36.dp)
+                                Modifier.padding(end = 8.dp).size(36.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(activeConfig.bgColor)
+                                    .background(activeConfig.bgColor.copy(alpha = if (isDarkMode) 0.2f else 1f))
                                     .clickable { showDatePicker = true },
                                 Alignment.Center
                             ) {
-                                Icon(
-                                    Icons.Default.CalendarToday,
-                                    null,
-                                    tint = activeConfig.color,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                Icon(Icons.Default.CalendarToday, null, tint = activeConfig.color, modifier = Modifier.size(18.dp))
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GreenBrand,
-                            unfocusedBorderColor = CreamBorder,
-                            unfocusedContainerColor = Cream,
-                            focusedContainerColor = GreenSurface
+                            focusedBorderColor      = GreenBrand,
+                            unfocusedBorderColor    = borderColor,
+                            unfocusedContainerColor = fieldBg,
+                            focusedContainerColor   = if (isDarkMode) Color(0xFF1A2E1F) else Color(0xFFEEF8F2),
+                            focusedTextColor        = primaryText,
+                            unfocusedTextColor      = primaryText
                         ),
                         shape = RoundedCornerShape(14.dp)
                     )
                 }
             }
 
-            // ── Save Button ───────────────────────────────────────────────────
+            // Save Button
             Button(
                 onClick = {
                     if (amount.isBlank()) return@Button
@@ -363,21 +313,17 @@ fun AddTransactionScreen(
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 enabled = !saving && amount.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = activeConfig.color,
+                    containerColor         = activeConfig.color,
                     disabledContainerColor = activeConfig.color.copy(alpha = 0.4f)
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 if (saving) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
                     Text("Saving…", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 } else {
-                    Text(activeConfig.emoji + "  Save ${activeConfig.label}", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("${activeConfig.emoji}  Save ${activeConfig.label}", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
 
@@ -388,7 +334,7 @@ fun AddTransactionScreen(
 
 // ─── Type Chip ────────────────────────────────────────────────────────────────
 @Composable
-private fun TypeChip(
+private fun AddTypeChip(
     config: TypeConfig,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
@@ -397,34 +343,19 @@ private fun TypeChip(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(if (isSelected) config.color else config.bgColor)
-            .border(
-                width = if (isSelected) 0.dp else 1.dp,
-                color = config.color.copy(alpha = 0.25f),
-                shape = RoundedCornerShape(14.dp)
-            )
+            .background(if (isSelected) config.color else config.bgColor.copy(alpha = 0.5f))
+            .border(width = if (isSelected) 0.dp else 1.dp,
+                color = config.color.copy(alpha = 0.25f), shape = RoundedCornerShape(14.dp))
             .clickable { onClick() }
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(config.emoji, fontSize = 22.sp)
-            Text(
-                config.label,
-                fontSize = 11.sp,
+            Text(config.label, fontSize = 11.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.White else config.color
-            )
-            if (isSelected) {
-                Box(Modifier.size(5.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
-            }
+                color = if (isSelected) Color.White else config.color)
+            if (isSelected) Box(Modifier.size(5.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
         }
     }
-}
-
-// ─── Preview ──────────────────────────────────────────────────────────────────
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun AddTransactionScreenPreview() {
-    HustleScoreTheme { AddTransactionScreen(navController = rememberNavController()) }
 }

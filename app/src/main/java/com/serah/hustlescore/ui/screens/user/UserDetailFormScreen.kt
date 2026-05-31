@@ -1,11 +1,13 @@
 package com.serah.hustlescore.ui.screens.user
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,54 +26,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 import com.serah.hustlescore.data.NotificationHelper
 import com.serah.hustlescore.models.UserProfile
 import com.serah.hustlescore.navigation.Routes
+import com.serah.hustlescore.ui.theme.ThemeViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-// ─── Color Palette ────────────────────────────────────────────────────────────
-
-private val PageBg         = Color(0xFFF5F9F5)   // soft sage page background
-private val SurfaceWhite   = Color(0xFFFFFFFF)   // card / field surface
-private val SurfaceFocus   = Color(0xFFF1F8F1)   // focused field surface
-private val BorderDefault  = Color(0xFFC8E6C9)   // subtle green border
-private val BorderFocus    = Color(0xFF4CAF50)   // vivid green on focus
-private val BrandGreen     = Color(0xFF2E7D32)   // primary action / icon
-private val BrandGreenLight= Color(0xFF4CAF50)   // accent / focused icon
-private val TextPrimary    = Color(0xFF1B4332)   // headings & input text
-private val TextLabel      = Color(0xFF558B5E)   // field labels
-private val TextPlaceholder= Color(0xFFA5C8A8)   // placeholder text
-private val TextMuted      = Color(0xFF81C784)   // char counter / muted
-private val IconTint       = Color(0xFF81C784)   // unfocused leading icons
-private val ErrorRed       = Color(0xFFD32F2F)   // validation errors
-private val HeroBg         = Color(0xFFE8F5E9)   // hero icon background
-private val SectionIconBg  = Color(0xFFE8F5E9)   // section header icon bg
-private val SuccessBg      = Color(0xFFF1F8F1)   // success banner bg
-private val SuccessBorder  = Color(0xFFA5D6A7)   // success banner border
-
 // ─── County List ─────────────────────────────────────────────────────────────
-
 val KenyaCounties = listOf(
-    "Nairobi", "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta",
-    "Garissa", "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru", "Tharaka Nithi",
-    "Embu", "Kitui", "Machakos", "Makueni", "Nyandarua", "Nyeri", "Kirinyaga",
-    "Murang'a", "Kiambu", "Turkana", "West Pokot", "Samburu", "Trans Nzoia",
-    "Uasin Gishu", "Elgeyo Marakwet", "Nandi", "Baringo", "Laikipia", "Nakuru",
-    "Narok", "Kajiado", "Kericho", "Bomet", "Kakamega", "Vihiga", "Bungoma",
-    "Busia", "Siaya", "Kisumu", "Homa Bay", "Migori", "Kisii", "Nyamira",
-    "Nandi Hills", "Nyahururu"
+    "Nairobi","Mombasa","Kwale","Kilifi","Tana River","Lamu","Taita Taveta",
+    "Garissa","Wajir","Mandera","Marsabit","Isiolo","Meru","Tharaka Nithi",
+    "Embu","Kitui","Machakos","Makueni","Nyandarua","Nyeri","Kirinyaga",
+    "Murang'a","Kiambu","Turkana","West Pokot","Samburu","Trans Nzoia",
+    "Uasin Gishu","Elgeyo Marakwet","Nandi","Baringo","Laikipia","Nakuru",
+    "Narok","Kajiado","Kericho","Bomet","Kakamega","Vihiga","Bungoma",
+    "Busia","Siaya","Kisumu","Homa Bay","Migori","Kisii","Nyamira",
+    "Nandi Hills","Nyahururu"
 )
 
-// ─── ViewModel ───────────────────────────────────────────────────────────────
-
+// ─── ViewModel (unchanged) ────────────────────────────────────────────────────
 class UserDetailFormViewModel : ViewModel() {
-
     private val db   = FirebaseDatabase.getInstance().reference
     private val auth = FirebaseAuth.getInstance()
 
@@ -84,12 +61,12 @@ class UserDetailFormViewModel : ViewModel() {
     var monthlyIncome  by mutableStateOf("")
     var bio            by mutableStateOf("")
 
-    var fullNameError  by mutableStateOf<String?>(null)
-    var phoneError     by mutableStateOf<String?>(null)
-    var idNumberError  by mutableStateOf<String?>(null)
-    var countyError    by mutableStateOf<String?>(null)
+    var fullNameError   by mutableStateOf<String?>(null)
+    var phoneError      by mutableStateOf<String?>(null)
+    var idNumberError   by mutableStateOf<String?>(null)
+    var countyError     by mutableStateOf<String?>(null)
     var occupationError by mutableStateOf<String?>(null)
-    var incomeError    by mutableStateOf<String?>(null)
+    var incomeError     by mutableStateOf<String?>(null)
 
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val saveState: StateFlow<SaveState> = _saveState
@@ -124,21 +101,18 @@ class UserDetailFormViewModel : ViewModel() {
 
     private fun validate(): Boolean {
         var valid = true
-        fullNameError = if (fullName.trim().length < 3) { valid = false; "Enter your full name" } else null
-        phoneError    = if (!phone.matches(Regex("^[0-9]{10,12}$"))) { valid = false; "Enter a valid phone number" } else null
-        idNumberError = if (idNumber.trim().length < 6) { valid = false; "Enter a valid ID number" } else null
-        countyError   = if (selectedCounty.isBlank()) { valid = false; "Please select a county" } else null
-        occupationError = if (occupation.trim().isBlank()) { valid = false; "Enter your occupation" } else null
-        incomeError   = if (monthlyIncome.trim().isBlank() || monthlyIncome.toDoubleOrNull() == null) { valid = false; "Enter a valid income amount" } else null
+        fullNameError   = if (fullName.trim().length < 3)                                          { valid = false; "Enter your full name"        } else null
+        phoneError      = if (!phone.matches(Regex("^[0-9]{10,12}$")))                            { valid = false; "Enter a valid phone number"   } else null
+        idNumberError   = if (idNumber.trim().length < 6)                                         { valid = false; "Enter a valid ID number"      } else null
+        countyError     = if (selectedCounty.isBlank())                                            { valid = false; "Please select a county"       } else null
+        occupationError = if (occupation.trim().isBlank())                                         { valid = false; "Enter your occupation"        } else null
+        incomeError     = if (monthlyIncome.trim().isBlank() || monthlyIncome.toDoubleOrNull() == null) { valid = false; "Enter a valid income amount" } else null
         return valid
     }
 
     fun submitProfile() {
         if (!validate()) return
-        val uid = auth.currentUser?.uid ?: run {
-            _saveState.value = SaveState.Error("User not authenticated")
-            return
-        }
+        val uid = auth.currentUser?.uid ?: run { _saveState.value = SaveState.Error("User not authenticated"); return }
         _saveState.value = SaveState.Loading
         val profileData = mapOf(
             "uid"             to uid,
@@ -153,14 +127,12 @@ class UserDetailFormViewModel : ViewModel() {
             "bio"             to bio.trim(),
             "profileComplete" to true
         )
-        db.child("Users").child(uid).child("profile")   // ✅ Fixed: capital U
+        db.child("Users").child(uid).child("profile")
             .setValue(profileData)
             .addOnSuccessListener {
                 _saveState.value = SaveState.Success
-
-                // ✅ Send profile completed notification
-                val uid = auth.currentUser?.uid ?: return@addOnSuccessListener
-                NotificationHelper.profileCompleted(uid)
+                val uid2 = auth.currentUser?.uid ?: return@addOnSuccessListener
+                NotificationHelper.profileCompleted(uid2)
             }
             .addOnFailureListener { _saveState.value = SaveState.Error(it.message ?: "Save failed") }
     }
@@ -169,14 +141,56 @@ class UserDetailFormViewModel : ViewModel() {
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserDetailFormScreen(
     navController: NavController,
+    themeViewModel: ThemeViewModel,
     formViewModel: UserDetailFormViewModel = viewModel()
 ) {
-    val saveState by formViewModel.saveState.collectAsState()
+    val isDarkMode by themeViewModel.isDarkMode.collectAsState()
+    val saveState  by formViewModel.saveState.collectAsState()
+
+    // ── Theme-aware colours ───────────────────────────────────────────────────
+    val pageBg          = if (isDarkMode) Color(0xFF121212) else Color(0xFFF5F9F5)
+    val cardBg          = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
+    val focusedFieldBg  = if (isDarkMode) Color(0xFF1A2E1F) else Color(0xFFF1F8F1)
+    val unfocusedFieldBg= if (isDarkMode) Color(0xFF2A2A2A) else Color.White
+    val borderDefault   = if (isDarkMode) Color(0xFF2D6A3F) else Color(0xFFC8E6C9)
+    val borderFocus     = Color(0xFF4CAF50)
+    val brandGreen      = Color(0xFF2E7D32)
+    val brandGreenLight = Color(0xFF4CAF50)
+    val primaryText     = if (isDarkMode) Color.White       else Color(0xFF1B4332)
+    val labelText       = if (isDarkMode) Color(0xFF81C784) else Color(0xFF558B5E)
+    val placeholderText = if (isDarkMode) Color(0xFF4A6B4D) else Color(0xFFA5C8A8)
+    val mutedText       = if (isDarkMode) Color(0xFF4A6B4D) else Color(0xFF81C784)
+    val iconTint        = if (isDarkMode) Color(0xFF4A7C59) else Color(0xFF81C784)
+    val errorRed        = Color(0xFFD32F2F)
+    val heroBg          = if (isDarkMode) Color(0xFF1A2E1F) else Color(0xFFE8F5E9)
+    val sectionIconBg   = if (isDarkMode) Color(0xFF1A2E1F) else Color(0xFFE8F5E9)
+    val successBg       = if (isDarkMode) Color(0xFF1A2E1F) else Color(0xFFF1F8F1)
+    val successBorder   = if (isDarkMode) Color(0xFF2D6A3F) else Color(0xFFA5D6A7)
+    val topBarBg        = if (isDarkMode) Color(0xFF1A1A1A) else Color.White
+
+    // Field colours builder
+    @Composable
+    fun fieldColors(hasError: Boolean = false) = OutlinedTextFieldDefaults.colors(
+        unfocusedBorderColor      = if (hasError) errorRed else borderDefault,
+        focusedBorderColor        = if (hasError) errorRed else borderFocus,
+        errorBorderColor          = errorRed,
+        unfocusedTextColor        = primaryText,
+        focusedTextColor          = primaryText,
+        cursorColor               = brandGreen,
+        unfocusedContainerColor   = unfocusedFieldBg,
+        focusedContainerColor     = focusedFieldBg,
+        errorContainerColor       = if (isDarkMode) Color(0xFF2E1A1A) else Color(0xFFFFF0F0),
+        focusedLeadingIconColor   = brandGreen,
+        unfocusedLeadingIconColor = iconTint,
+        errorLeadingIconColor     = errorRed,
+        focusedTrailingIconColor  = brandGreenLight,
+        unfocusedTrailingIconColor= iconTint
+    )
+
     var countyDropdownExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(saveState) {
@@ -190,37 +204,23 @@ fun UserDetailFormScreen(
     }
 
     Scaffold(
-        containerColor = PageBg,
+        containerColor = pageBg,
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Complete Your Profile",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                },
+                title = { Text("Complete Your Profile", color = primaryText, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.Default.ArrowBackIosNew,
-                            contentDescription = null,
-                            tint = BrandGreen
-                        )
+                        Icon(Icons.Default.ArrowBackIosNew, null, tint = brandGreen)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = SurfaceWhite
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = topBarBg)
             )
         }
     ) { padding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(PageBg)
+                .background(pageBg)
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -228,132 +228,62 @@ fun UserDetailFormScreen(
         ) {
 
             // ── Hero card ──────────────────────────────────────────────────
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                border = BorderStroke(0.5.dp, BorderDefault)
-            ) {
-                Row(
-                    modifier = Modifier.padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(HeroBg),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.AccountCircle,
-                            contentDescription = null,
-                            tint = BrandGreen,
-                            modifier = Modifier.size(28.dp)
-                        )
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(cardBg), border = BorderStroke(0.5.dp, borderDefault)) {
+                Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(Modifier.size(54.dp).clip(RoundedCornerShape(16.dp)).background(heroBg), Alignment.Center) {
+                        Icon(Icons.Default.AccountCircle, null, tint = brandGreen, modifier = Modifier.size(28.dp))
                     }
                     Column {
-                        Text(
-                            "Build Your Profile",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp
-                        )
+                        Text("Build Your Profile", color = primaryText, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                         Spacer(Modifier.height(3.dp))
-                        Text(
-                            "Your information helps us calculate your HustleScore.",
-                            color = BrandGreenLight,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
-                        )
+                        Text("Your information helps us calculate your HustleScore.",
+                            color = brandGreenLight, fontSize = 13.sp, lineHeight = 18.sp)
                     }
                 }
             }
 
             // ── Personal Details ───────────────────────────────────────────
+            FormSectionHeader("Personal Details", Icons.Default.Person, primaryText, sectionIconBg, brandGreen, borderDefault)
 
-            FormSectionHeader("Personal Details", Icons.Default.Person)
+            DetailFormField(formViewModel.fullName, { formViewModel.fullName = it },
+                "Full Name", "e.g Jane Wanjiku", Icons.Default.Badge, labelText, placeholderText,
+                fieldColors(formViewModel.fullNameError != null), formViewModel.fullNameError, errorRed)
 
-            FormField(
-                value = formViewModel.fullName,
-                onValueChange = { formViewModel.fullName = it },
-                label = "Full Name",
-                placeholder = "e.g Jane Wanjiku",
-                icon = Icons.Default.Badge,
-                error = formViewModel.fullNameError
-            )
+            DetailFormField(formViewModel.phone, { formViewModel.phone = it },
+                "Phone Number", "e.g 0712345678", Icons.Default.Phone, labelText, placeholderText,
+                fieldColors(formViewModel.phoneError != null), formViewModel.phoneError, errorRed,
+                keyboardType = KeyboardType.Phone)
 
-            FormField(
-                value = formViewModel.phone,
-                onValueChange = { formViewModel.phone = it },
-                label = "Phone Number",
-                placeholder = "e.g 0712345678",
-                icon = Icons.Default.Phone,
-                keyboardType = KeyboardType.Phone,
-                error = formViewModel.phoneError
-            )
+            DetailFormField(formViewModel.idNumber, { formViewModel.idNumber = it },
+                "National ID Number", "e.g 12345678", Icons.Default.CreditCard, labelText, placeholderText,
+                fieldColors(formViewModel.idNumberError != null), formViewModel.idNumberError, errorRed,
+                keyboardType = KeyboardType.Number)
 
-            FormField(
-                value = formViewModel.idNumber,
-                onValueChange = { formViewModel.idNumber = it },
-                label = "National ID Number",
-                placeholder = "e.g 12345678",
-                icon = Icons.Default.CreditCard,
-                keyboardType = KeyboardType.Number,
-                error = formViewModel.idNumberError
-            )
-
-            // ── County dropdown ────────────────────────────────────────────
-
+            // County Dropdown
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-
-                Text(
-                    "County",
-                    color = TextLabel,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = countyDropdownExpanded,
-                    onExpandedChange = { countyDropdownExpanded = it }
-                ) {
+                Text("County", color = labelText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                ExposedDropdownMenuBox(expanded = countyDropdownExpanded, onExpandedChange = { countyDropdownExpanded = it }) {
                     OutlinedTextField(
                         value = formViewModel.selectedCounty.ifBlank { "Select your county" },
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = countyDropdownExpanded
-                            )
-                        },
+                        onValueChange = {}, readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = countyDropdownExpanded) },
                         leadingIcon = {
-                            Icon(
-                                Icons.Default.LocationOn,
-                                null,
-                                tint = if (formViewModel.countyError != null) ErrorRed else IconTint
-                            )
+                            Icon(Icons.Default.LocationOn, null,
+                                tint = if (formViewModel.countyError != null) errorRed else iconTint)
                         },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         isError = formViewModel.countyError != null,
-                        colors = lightFieldColors()
+                        colors = fieldColors(formViewModel.countyError != null)
                     )
-
-                    ExposedDropdownMenu(
-                        expanded = countyDropdownExpanded,
+                    ExposedDropdownMenu(expanded = countyDropdownExpanded,
                         onDismissRequest = { countyDropdownExpanded = false },
-                        modifier = Modifier
-                            .background(SurfaceWhite)
-                            .heightIn(max = 260.dp)
-                    ) {
+                        modifier = Modifier.background(if (isDarkMode) Color(0xFF1E1E1E) else Color.White).heightIn(max = 260.dp)) {
                         KenyaCounties.forEach { county ->
                             DropdownMenuItem(
-                                text = { Text(county, color = TextPrimary, fontSize = 14.sp) },
+                                text = { Text(county, color = primaryText, fontSize = 14.sp) },
                                 onClick = {
                                     formViewModel.selectedCounty = county
                                     formViewModel.countyError    = null
@@ -363,151 +293,82 @@ fun UserDetailFormScreen(
                         }
                     }
                 }
-
-                formViewModel.countyError?.let {
-                    Text(it, color = ErrorRed, fontSize = 11.sp)
-                }
+                formViewModel.countyError?.let { Text(it, color = errorRed, fontSize = 11.sp) }
             }
 
             // ── Financial Information ──────────────────────────────────────
+            FormSectionHeader("Financial Information", Icons.Default.AccountBalance, primaryText, sectionIconBg, brandGreen, borderDefault)
 
-            FormSectionHeader("Financial Information", Icons.Default.AccountBalance)
+            DetailFormField(formViewModel.occupation, { formViewModel.occupation = it },
+                "Occupation", "e.g Software Engineer", Icons.Default.Work, labelText, placeholderText,
+                fieldColors(formViewModel.occupationError != null), formViewModel.occupationError, errorRed)
 
-            FormField(
-                value = formViewModel.occupation,
-                onValueChange = { formViewModel.occupation = it },
-                label = "Occupation",
-                placeholder = "e.g Software Engineer",
-                icon = Icons.Default.Work,
-                error = formViewModel.occupationError
-            )
+            DetailFormField(formViewModel.employer, { formViewModel.employer = it },
+                "Employer / Business Name", "e.g Safaricom PLC", Icons.Default.Business,
+                labelText, placeholderText, fieldColors())
 
-            FormField(
-                value = formViewModel.employer,
-                onValueChange = { formViewModel.employer = it },
-                label = "Employer / Business Name",
-                placeholder = "e.g Safaricom PLC",
-                icon = Icons.Default.Business
-            )
-
-            FormField(
-                value = formViewModel.monthlyIncome,
-                onValueChange = { formViewModel.monthlyIncome = it },
-                label = "Monthly Income (KES)",
-                placeholder = "e.g 45000",
-                icon = Icons.Default.AttachMoney,
-                keyboardType = KeyboardType.Number,
-                error = formViewModel.incomeError
-            )
+            DetailFormField(formViewModel.monthlyIncome, { formViewModel.monthlyIncome = it },
+                "Monthly Income (KES)", "e.g 45000", Icons.Default.AttachMoney, labelText, placeholderText,
+                fieldColors(formViewModel.incomeError != null), formViewModel.incomeError, errorRed,
+                keyboardType = KeyboardType.Number)
 
             // ── About You ─────────────────────────────────────────────────
-
-            FormSectionHeader("About You (Optional)", Icons.Default.Info)
+            FormSectionHeader("About You (Optional)", Icons.Default.Info, primaryText, sectionIconBg, brandGreen, borderDefault)
 
             OutlinedTextField(
                 value = formViewModel.bio,
                 onValueChange = { if (it.length <= 300) formViewModel.bio = it },
-                placeholder = {
-                    Text("Tell us a little about yourself...", color = TextPlaceholder)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 100.dp),
-                shape = RoundedCornerShape(14.dp),
-                maxLines = 5,
+                placeholder = { Text("Tell us a little about yourself...", color = placeholderText) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                shape = RoundedCornerShape(14.dp), maxLines = 5,
                 supportingText = {
-                    Text(
-                        "${formViewModel.bio.length}/300",
-                        color = TextMuted,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.End,
-                        fontSize = 11.sp
-                    )
+                    Text("${formViewModel.bio.length}/300", color = mutedText,
+                        modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End, fontSize = 11.sp)
                 },
-                colors = lightFieldColors()
+                colors = fieldColors()
             )
 
             Spacer(Modifier.height(4.dp))
 
             // ── Save / Loading / Success / Error ──────────────────────────
-
             AnimatedContent(targetState = saveState, label = "save_btn") { state ->
-
                 when (state) {
-
                     is UserDetailFormViewModel.SaveState.Loading -> {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = BrandGreen)
+                        Box(Modifier.fillMaxWidth(), Alignment.Center) {
+                            CircularProgressIndicator(color = brandGreen)
                         }
                     }
-
                     is UserDetailFormViewModel.SaveState.Success -> {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = SuccessBg),
-                            border = BorderStroke(0.5.dp, SuccessBorder)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(Icons.Default.CheckCircle, null, tint = BrandGreen)
+                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(successBg),
+                            border = BorderStroke(0.5.dp, successBorder)) {
+                            Row(Modifier.fillMaxWidth().padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Icon(Icons.Default.CheckCircle, null, tint = brandGreen)
                                 Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "Profile saved successfully!",
-                                    color = BrandGreen,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text("Profile saved successfully!", color = brandGreen, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-
                     is UserDetailFormViewModel.SaveState.Error -> {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF0F0)),
-                            border = BorderStroke(0.5.dp, Color(0xFFFFCDD2))
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Error, null, tint = ErrorRed)
+                        Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(if (isDarkMode) Color(0xFF2E1A1A) else Color(0xFFFFF0F0)),
+                            border = BorderStroke(0.5.dp, if (isDarkMode) Color(0xFF6A2D2D) else Color(0xFFFFCDD2))) {
+                            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Error, null, tint = errorRed)
                                 Spacer(Modifier.width(8.dp))
-                                Text(state.message, color = ErrorRed)
+                                Text(state.message, color = errorRed)
                             }
                         }
                     }
-
                     else -> {
-
-                        Button(
-                            onClick = { formViewModel.submitProfile() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp),
+                        Button(onClick = { formViewModel.submitProfile() },
+                            modifier = Modifier.fillMaxWidth().height(54.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = BrandGreen,
-                                contentColor   = Color.White
-                            )
-                        ) {
+                            colors = ButtonDefaults.buttonColors(containerColor = brandGreen, contentColor = Color.White)) {
                             Icon(Icons.Default.Save, null, tint = Color.White)
                             Spacer(Modifier.width(8.dp))
-                            Text(
-                                "Save Profile",
-                                fontWeight = FontWeight.Bold,
-                                fontSize   = 16.sp,
-                                color      = Color.White
-                            )
+                            Text("Save Profile", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
                         }
                     }
                 }
@@ -518,110 +379,51 @@ fun UserDetailFormScreen(
     }
 }
 
-// ─── Shared field colors ──────────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun lightFieldColors() = OutlinedTextFieldDefaults.colors(
-    unfocusedBorderColor    = BorderDefault,
-    focusedBorderColor      = BorderFocus,
-    errorBorderColor        = ErrorRed,
-    unfocusedTextColor      = TextPrimary,
-    focusedTextColor        = TextPrimary,
-    cursorColor             = BrandGreen,
-    unfocusedContainerColor = SurfaceWhite,
-    focusedContainerColor   = SurfaceFocus,
-    errorContainerColor     = Color(0xFFFFF0F0),
-    focusedLeadingIconColor   = BrandGreen,
-    unfocusedLeadingIconColor = IconTint,
-    errorLeadingIconColor     = ErrorRed,
-    focusedTrailingIconColor  = BrandGreenLight,
-    unfocusedTrailingIconColor= IconTint
-)
-
 // ─── Section header ───────────────────────────────────────────────────────────
-
 @Composable
-private fun FormSectionHeader(title: String, icon: ImageVector) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 6.dp, bottom = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(SectionIconBg),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = BrandGreen,
-                modifier = Modifier.size(17.dp)
-            )
+private fun FormSectionHeader(
+    title: String, icon: ImageVector,
+    primaryText: Color, sectionIconBg: Color, brandGreen: Color, borderDefault: Color
+) {
+    Row(Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(sectionIconBg), Alignment.Center) {
+            Icon(icon, null, tint = brandGreen, modifier = Modifier.size(17.dp))
         }
         Spacer(Modifier.width(10.dp))
-        Text(
-            text = title,
-            color = TextPrimary,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp
-        )
+        Text(title, color = primaryText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Spacer(Modifier.width(10.dp))
-        HorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = BorderDefault
-        )
+        HorizontalDivider(Modifier.weight(1f), color = borderDefault)
     }
 }
 
 // ─── Reusable form field ──────────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FormField(
+private fun DetailFormField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
     placeholder: String,
     icon: ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    error: String? = null
+    labelText: Color,
+    placeholderText: Color,
+    colors: TextFieldColors,
+    error: String? = null,
+    errorRed: Color = Color(0xFFD32F2F),
+    keyboardType: KeyboardType = KeyboardType.Text
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-
-        Text(
-            label,
-            color = TextLabel,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
-        )
-
+        Text(label, color = labelText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
         OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = {
-                Text(placeholder, color = TextPlaceholder)
-            },
-            leadingIcon = {
-                Icon(
-                    icon,
-                    null,
-                    tint = if (error != null) ErrorRed else IconTint
-                )
-            },
+            value = value, onValueChange = onValueChange,
+            placeholder = { Text(placeholder, color = placeholderText) },
+            leadingIcon = { Icon(icon, null, tint = if (error != null) errorRed else Color(0xFF81C784)) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            singleLine = true,
+            shape = RoundedCornerShape(14.dp), singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             isError = error != null,
-            supportingText = error?.let {
-                { Text(it, color = ErrorRed, fontSize = 11.sp) }
-            },
-            colors = lightFieldColors()
+            supportingText = error?.let { { Text(it, color = errorRed, fontSize = 11.sp) } },
+            colors = colors
         )
     }
 }

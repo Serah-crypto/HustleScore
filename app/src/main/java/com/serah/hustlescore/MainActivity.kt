@@ -47,8 +47,18 @@ class MainActivity : ComponentActivity() {
                     containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = {
                         when {
-                            showUserBottomNav -> AppBottomNavBar(navController, userBottomNavItems)
-                            showAdminBottomNav -> AppBottomNavBar(navController, adminBottomNavItems)
+                            showUserBottomNav -> AppBottomNavBar(
+                                navController = navController,
+                                items = userBottomNavItems,
+                                themeViewModel = themeViewModel
+                            )
+
+                            showAdminBottomNav -> AppBottomNavBar(
+                                navController = navController,
+                                items = adminBottomNavItems,
+                                themeViewModel = themeViewModel
+                            )
+
                         }
                     }
                 ) { innerPadding ->

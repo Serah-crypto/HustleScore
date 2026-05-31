@@ -58,6 +58,12 @@ data class AppNotification(
 )
 
 
+data class ChatMessage(
+    val text: String = "",
+    val isUser: Boolean = false
+)
+
+
 // ─── Data Model ───────────────────────────────────────────────────────────────
 
 data class UserProfile(
